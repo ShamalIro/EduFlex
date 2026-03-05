@@ -68,7 +68,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.prod.yml,nginx/nginx.conf"
+          source: "docker-compose.yml,nginx/nginx.conf"
           target: "/home/ubuntu/eduflex"
 
       - name: SSH into EC2 and Deploy
@@ -89,9 +89,9 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-user-service:latest
 
             # Stop old containers and start new ones
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
-
+            docker compose -f docker-compose.yml down
+            docker compose -f docker-compose.yml up -d
+            
             # Clean up old unused images
             docker image prune -f
 
