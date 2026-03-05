@@ -129,6 +129,7 @@ services:
       - COURSE_SERVICE_URL=http://course-service:4002
       - ASSIGNMENT_SERVICE_URL=http://assessment-service:4003
       - ENROLLMENT_SERVICE_URL=http://enrollment-service:4004
+      - GRADE_SERVICE_URL=http://enrollment-service:4004git add docker-compose.yml
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "3000:3000"
