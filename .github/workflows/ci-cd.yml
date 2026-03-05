@@ -71,7 +71,7 @@ jobs:
           source: "docker-compose.yml,nginx/nginx.conf"
           target: "/home/ubuntu/eduflex"
 
-      - name: SSH into EC2 and Deploy
+      - name: SSH and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -80,19 +80,15 @@ jobs:
           script: |
             cd /home/ubuntu/eduflex
 
-            # Login to DockerHub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            # Pull latest images
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-frontend:latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-api-gateway:latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-user-service:latest
 
-            # Stop old containers and start new ones
-            docker compose -f docker-compose.yml down
-            docker compose -f docker-compose.yml up -d
-            
-            # Clean up old unused images
+            docker compose down
+            docker compose up -d
+
             docker image prune -f
 
             echo "✅ Deployment complete!"

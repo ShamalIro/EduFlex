@@ -48,29 +48,6 @@ services:
     restart: unless-stopped
 
   # ─────────────────────────────────────────
-  # Course Service (ready for when you build it)
-  # ─────────────────────────────────────────
-  course-service:
-    image: shamal01/eduflex-course-service:latest
-    container_name: eduflex-course-service
-    environment:
-      - PORT=4002
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - DB_NAME=${MYSQL_DATABASE}
-      - JWT_SECRET=${JWT_SECRET}
-    ports:
-      - "4002:4002"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - eduflex-network
-    restart: unless-stopped
-
-  # ─────────────────────────────────────────
   # API Gateway
   # ─────────────────────────────────────────
   api-gateway:
@@ -88,7 +65,6 @@ services:
       - "3000:3000"
     depends_on:
       - user-service
-      - course-service
     networks:
       - eduflex-network
     restart: unless-stopped
