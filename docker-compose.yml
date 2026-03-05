@@ -1,39 +1,43 @@
 version: '3.8'
 
 services:
+
+  # ─────────────────────────────────────────
   # MySQL Database
+  # ─────────────────────────────────────────
   mysql:
     image: mysql:8.0
     container_name: eduflex-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: eduflex
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
       - eduflex-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ─────────────────────────────────────────
   # User Service
+  # ─────────────────────────────────────────
   user-service:
-    build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
+    image: shamal01/eduflex-user-service:latest
     container_name: eduflex-user-service
     environment:
       - PORT=4001
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=eduflex
-      - JWT_SECRET=your_jwt_secret
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "4001:4001"
     depends_on:
@@ -43,19 +47,20 @@ services:
       - eduflex-network
     restart: unless-stopped
 
-  # Course Service
+  # ─────────────────────────────────────────
+  # Course Service (ready for when you build it)
+  # ─────────────────────────────────────────
   course-service:
-    build:
-      context: ./services/course-service
-      dockerfile: Dockerfile
+    image: shamal01/eduflex-course-service:latest
     container_name: eduflex-course-service
     environment:
       - PORT=4002
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=eduflex
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "4002:4002"
     depends_on:
@@ -65,17 +70,20 @@ services:
       - eduflex-network
     restart: unless-stopped
 
+  # ─────────────────────────────────────────
   # API Gateway
+  # ─────────────────────────────────────────
   api-gateway:
-    build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
+    image: shamal01/eduflex-api-gateway:latest
     container_name: eduflex-api-gateway
     environment:
       - PORT=3000
+      - NODE_ENV=production
       - USER_SERVICE_URL=http://user-service:4001
       - COURSE_SERVICE_URL=http://course-service:4002
-      - JWT_SECRET=your_jwt_secret
+      - ASSIGNMENT_SERVICE_URL=http://assignment-service:4003
+      - GRADE_SERVICE_URL=http://grade-service:4004
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "3000:3000"
     depends_on:
@@ -85,14 +93,14 @@ services:
       - eduflex-network
     restart: unless-stopped
 
-  # Frontend
+  # ─────────────────────────────────────────
+  # Frontend (React)
+  # ─────────────────────────────────────────
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: shamal01/eduflex-frontend:latest
     container_name: eduflex-frontend
     ports:
-      - "80:80"
+      - "5173:80"
     depends_on:
       - api-gateway
     networks:
