@@ -48,6 +48,75 @@ services:
     restart: unless-stopped
 
   # ─────────────────────────────────────────
+  # Course Service
+  # ─────────────────────────────────────────
+  course-service:
+    image: shamal01/eduflex-course-service:latest
+    container_name: eduflex-course-service
+    environment:
+      - PORT=4002
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "4002:4002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - eduflex-network
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # Assessment Service
+  # ─────────────────────────────────────────
+  assessment-service:
+    image: shamal01/eduflex-assessment-service:latest
+    container_name: eduflex-assessment-service
+    environment:
+      - PORT=4003
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "4003:4003"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - eduflex-network
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # Enrollment Service
+  # ─────────────────────────────────────────
+  enrollment-service:
+    image: shamal01/eduflex-enrollment-service:latest
+    container_name: eduflex-enrollment-service
+    environment:
+      - PORT=4004
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "4004:4004"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - eduflex-network
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
   # API Gateway
   # ─────────────────────────────────────────
   api-gateway:
@@ -58,13 +127,16 @@ services:
       - NODE_ENV=production
       - USER_SERVICE_URL=http://user-service:4001
       - COURSE_SERVICE_URL=http://course-service:4002
-      - ASSIGNMENT_SERVICE_URL=http://assignment-service:4003
-      - GRADE_SERVICE_URL=http://grade-service:4004
+      - ASSIGNMENT_SERVICE_URL=http://assessment-service:4003
+      - ENROLLMENT_SERVICE_URL=http://enrollment-service:4004
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "3000:3000"
     depends_on:
       - user-service
+      - course-service
+      - assessment-service
+      - enrollment-service
     networks:
       - eduflex-network
     restart: unless-stopped
