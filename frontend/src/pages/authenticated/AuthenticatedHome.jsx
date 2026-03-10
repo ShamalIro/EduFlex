@@ -77,7 +77,7 @@ export function AuthenticatedHome() {
             <div className="lg:col-span-2 space-y-6">
               <motion.div variants={fadeInUp}>
                 <h1 className="text-3xl lg:text-5xl font-bold text-slate-900 mb-4">
-                  Welcome back, {user.name.split(' ')[0]}! 👋
+                  Welcome back, {user.first_name}! 👋
                 </h1>
                 <p className="text-lg text-slate-600 max-w-xl">
                   Ready to continue your learning journey? Pick up where you

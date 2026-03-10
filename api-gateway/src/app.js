@@ -10,10 +10,14 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(morgan('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -28,48 +32,44 @@ app.get('/health', (req, res) => {
 app.use('/api/users', createProxyMiddleware({
   target: process.env.USER_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/users': '/api/users'
-  },
-  onError: (err, req, res) => {
-    console.error('User service proxy error:', err);
-    res.status(503).json({ error: 'User service unavailable' });
+  on: {
+    error: (err, req, res) => {
+      console.error('User service proxy error:', err);
+      res.status(503).json({ error: 'User service unavailable' });
+    }
   }
 }));
 
 app.use('/api/courses', createProxyMiddleware({
   target: process.env.COURSE_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/courses': '/api/courses'
-  },
-  onError: (err, req, res) => {
-    console.error('Course service proxy error:', err);
-    res.status(503).json({ error: 'Course service unavailable' });
+  on: {
+    error: (err, req, res) => {
+      console.error('Course service proxy error:', err);
+      res.status(503).json({ error: 'Course service unavailable' });
+    }
   }
 }));
 
 app.use('/api/assignments', createProxyMiddleware({
   target: process.env.ASSIGNMENT_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/assignments': '/api/assignments'
-  },
-  onError: (err, req, res) => {
-    console.error('Assignment service proxy error:', err);
-    res.status(503).json({ error: 'Assignment service unavailable' });
+  on: {
+    error: (err, req, res) => {
+      console.error('Assignment service proxy error:', err);
+      res.status(503).json({ error: 'Assignment service unavailable' });
+    }
   }
 }));
 
 app.use('/api/grades', createProxyMiddleware({
   target: process.env.GRADE_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/grades': '/api/grades'
-  },
-  onError: (err, req, res) => {
-    console.error('Grade service proxy error:', err);
-    res.status(503).json({ error: 'Grade service unavailable' });
+  on: {
+    error: (err, req, res) => {
+      console.error('Grade service proxy error:', err);
+      res.status(503).json({ error: 'Grade service unavailable' });
+    }
   }
 }));
 

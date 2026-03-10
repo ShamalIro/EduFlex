@@ -73,10 +73,11 @@ const register = async (req, res) => {
       data: {
         user: {
           id: newUser.id,
-          name: newUser.name,
+          first_name: newUser.first_name,
+          last_name: newUser.last_name,
           email: newUser.email,
           role: newUser.role,
-          status: newUser.status
+          is_active: newUser.is_active
         },
         token
       }
@@ -148,10 +149,11 @@ const login = async (req, res) => {
       data: {
         user: {
           id: user.id,
-          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email,
           role: user.role,
-          status: user.status
+          is_active: user.is_active
         },
         token
       }
