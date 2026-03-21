@@ -34,13 +34,14 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * @param {string} name
+   * @param {string} firstName
+   * @param {string} lastName
    * @param {string} email
    * @param {string} password
    * @param {'student'|'tutor'} role
    */
-  const register = async (name, email, password, role) => {
-    const response = await apiRegister(name, email, password, role);
+  const register = async (firstName, lastName, email, password, role) => {
+    const response = await apiRegister(firstName, lastName, email, password, role);
     setToken(response.token);
     setUser(response.user);
   };

@@ -6,25 +6,32 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
 export function RegisterPage() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     setIsSubmitting(true);
 
     try {
-      await register(name, email, password, role);
-      // Redirect to login instead of dashboard to fix user flow
-      navigate('/login');
+      await register(firstName, lastName, email, password, role);
+      setSuccess('Account created successfully! Redirecting to login...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (err) {
-      console.error(err);
+      setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -69,10 +76,18 @@ export function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="Full Name"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              label="First Name"
+              placeholder="John"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              icon={User}
+              required />
+
+            <Input
+              label="Last Name"
+              placeholder="Doe"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               icon={User}
               required />
 
@@ -124,6 +139,16 @@ export function RegisterPage() {
                 </button>
               </div>
             </div>
+
+            {success && (
+              <div className="text-green-600 text-sm text-center bg-green-50 p-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
+            {error && (
+              <div className="text-red-500 text-sm text-center">{error}</div>
+            )}
 
             <Button
               type="submit"

@@ -1,54 +1,44 @@
 import axios from 'axios';
 
-// Simple mock client since we don't have a real backend
-// In a real app, this would use axios.create()
-class ApiClient {
-  static instance;
-  baseURL = '/api';
+// Create axios instance with UserService base URL
+const client = axios.create({
+  baseURL: 'http://localhost:4001/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
-  constructor() {}
-
-  static getInstance() {
-    if (!ApiClient.instance) {
-      ApiClient.instance = new ApiClient();
+/**
+ * Add JWT token to request headers if it exists
+ */
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('eduflex_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return ApiClient.instance;
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  getToken() {
-    return localStorage.getItem('eduflex_token');
-  }
-
-  // Mock generic request handler
-  async request(method, url, data) {
-    const token = this.getToken();
-
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    // Mock 401 if token is missing for protected routes (simplified logic)
-    if (url.includes('protected') && !token) {
-      throw new Error('Unauthorized');
+/**
+ * Handle response errors globally
+ */
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle 401 unauthorized - clear token and redirect to login
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('eduflex_token');
+      localStorage.removeItem('eduflex_user');
+      window.location.href = '/login';
     }
-
-    return {};
+    return Promise.reject(error);
   }
+);
 
-  async get(url) {
-    return this.request('GET', url);
-  }
-
-  async post(url, data) {
-    return this.request('POST', url, data);
-  }
-
-  async put(url, data) {
-    return this.request('PUT', url, data);
-  }
-
-  async delete(url) {
-    return this.request('DELETE', url);
-  }
-}
-
-export const apiClient = ApiClient.getInstance();
+export default client;
