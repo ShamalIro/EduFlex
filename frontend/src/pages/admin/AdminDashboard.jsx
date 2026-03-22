@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, BookOpen, GraduationCap, DollarSign } from 'lucide-react';
 import { StatsCard } from '../../components/shared/StatsCard';
 import { Card } from '../../components/ui/Card';
+import client from '../../api/client';
 
 export function AdminDashboard() {
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTotalUsers();
+  }, []);
+
+  const fetchTotalUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await client.get('/users/all');
+      const users = response.data.data.users || [];
+      setTotalUsers(users.length);
+    } catch (error) {
+      console.error('Failed to fetch total users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
   {
     label: 'Total Users',
-    value: '12,450',
+    value: loading ? '...' : String(totalUsers),
     icon: Users,
     change: '+15%',
     trend: 'up'

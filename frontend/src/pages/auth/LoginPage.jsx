@@ -24,21 +24,21 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
-      // Redirect to the authenticated home page instead of dashboard
-      navigate(from, {
-        replace: true
-      });
+      const response = await login(email, password);
+      const role = response.user.role;
+
+      if (role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (role === 'tutor') {
+        navigate('/tutor/dashboard', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const fillDemo = (role) => {
-    setEmail(`${role}@edu.com`);
-    setPassword('password');
   };
 
   return (
@@ -142,38 +142,8 @@ export function LoginPage() {
               Create an account <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </div>
-
-          {/* Demo Helpers */}
-          <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Demo Credentials
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => fillDemo('student')}
-                className="text-xs py-1 px-2 bg-white border border-slate-200 rounded hover:border-indigo-300 text-slate-600">
-
-                Student
-              </button>
-              <button
-                onClick={() => fillDemo('tutor')}
-                className="text-xs py-1 px-2 bg-white border border-slate-200 rounded hover:border-indigo-300 text-slate-600">
-
-                Tutor
-              </button>
-              <button
-                onClick={() => fillDemo('admin')}
-                className="text-xs py-1 px-2 bg-white border border-slate-200 rounded hover:border-indigo-300 text-slate-600">
-
-                Admin
-              </button>
-            </div>
-            <p className="text-xs text-slate-400 mt-2 text-center">
-              Password: "password"
-            </p>
-          </div>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }

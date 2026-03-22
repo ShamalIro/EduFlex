@@ -27,3 +27,8 @@ Thumbs.db
 
 # Docker
 *.log
+# Temp files
+tmpclaude-*
+
+# PEM keys (IMPORTANT - security)
+*.pem

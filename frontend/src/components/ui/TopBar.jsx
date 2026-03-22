@@ -37,7 +37,7 @@ export function TopBar({ title, onMenuClick }) {
 
         {user && (
           <div className="flex items-center">
-            <Avatar name={user.name} src={user.avatar} size="sm" />
+            <Avatar name={`${user.first_name} ${user.last_name}`} src={user.avatar} size="sm" />
           </div>
         )}
       </div>

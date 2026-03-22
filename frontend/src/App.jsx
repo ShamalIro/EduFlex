@@ -72,9 +72,7 @@ export function App() {
             path="/student"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <DashboardLayout>
-                  <StudentDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
@@ -93,9 +91,7 @@ export function App() {
             path="/tutor"
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
-                <DashboardLayout>
-                  <TutorDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
@@ -109,14 +105,14 @@ export function App() {
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <DashboardLayout>
-                  <AdminDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="courses" element={<div className="p-8 text-center text-slate-500">Course Management - Coming Soon</div>} />
+            <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

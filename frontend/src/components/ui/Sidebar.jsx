@@ -102,14 +102,14 @@ export function Sidebar({ isOpen, onClose }) {
           <div className="p-4 border-t border-slate-800">
             <div className="flex items-center mb-4 px-2">
               <Avatar
-                name={user.name}
+                name={`${user.first_name} ${user.last_name}`}
                 src={user.avatar}
                 size="sm"
                 className="mr-3"
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">
-                  {user.name}
+                  {user.first_name} {user.last_name}
                 </p>
                 <p className="text-xs text-slate-400 truncate capitalize">
                   {user.role}
