@@ -24,11 +24,16 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
-      // Redirect to the authenticated home page instead of dashboard
-      navigate(from, {
-        replace: true
-      });
+      const response = await login(email, password);
+      const role = response.user.role;
+
+      if (role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (role === 'tutor') {
+        navigate('/tutor/dashboard', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {

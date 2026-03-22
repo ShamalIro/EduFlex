@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
     const response = await apiLogin(email, password);
     setToken(response.token);
     setUser(response.user);
+    return response;
   };
 
   /**

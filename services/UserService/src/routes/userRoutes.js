@@ -90,6 +90,61 @@ router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
+// Activate/Deactivate user (admin only)
+// PUT /api/users/:id/status
+router.put('/:id/status', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { updateUser } = require('../models/userModel');
+    const userId = req.params.id;
+    const { is_active } = req.body;
+
+    const updatedUser = await updateUser(userId, { is_active });
+
+    res.json({
+      success: true,
+      message: `User ${is_active ? 'activated' : 'deactivated'} successfully`,
+      data: { user: updatedUser }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user status',
+      error: error.message
+    });
+  }
+});
+
+// Change user role (admin only)
+// PUT /api/users/:id/role
+router.put('/:id/role', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { updateUser } = require('../models/userModel');
+    const userId = req.params.id;
+    const { role } = req.body;
+
+    if (!['student', 'tutor', 'admin'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role'
+      });
+    }
+
+    const updatedUser = await updateUser(userId, { role });
+
+    res.json({
+      success: true,
+      message: 'User role updated successfully',
+      data: { user: updatedUser }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user role',
+      error: error.message
+    });
+  }
+});
+
 /**
  * Health check route
  */

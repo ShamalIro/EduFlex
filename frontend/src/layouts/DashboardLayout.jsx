@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/ui/Sidebar';
 import { TopBar } from '../components/ui/TopBar';
 
@@ -16,7 +17,7 @@ export function DashboardLayout({
         <TopBar title={title} onMenuClick={() => setIsSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
+          <div className="max-w-7xl mx-auto">{children || <Outlet />}</div>
         </main>
       </div>
     </div>);
