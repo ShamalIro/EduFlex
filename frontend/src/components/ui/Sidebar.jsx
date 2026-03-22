@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,7 +9,8 @@ import {
   Users,
   Settings,
   LogOut,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Avatar } from './Avatar';
@@ -17,6 +18,7 @@ import { Avatar } from './Avatar';
 export function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -24,6 +26,7 @@ export function Sidebar({ isOpen, onClose }) {
     { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/student/courses', icon: BookOpen, label: 'Browse Courses' },
     { to: '/student/my-courses', icon: GraduationCap, label: 'My Courses' },
+    { to: '/student/assignments', icon: ClipboardList, label: 'Assignments' },
     { to: '/student/results', icon: BarChart3, label: 'My Progress' }
   ];
 
@@ -108,7 +111,10 @@ export function Sidebar({ isOpen, onClose }) {
                 className="mr-3"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
+                <p
+                  className="text-sm font-medium text-white truncate cursor-pointer hover:text-indigo-300"
+                  onClick={() => navigate('/profile')}
+                >
                   {user.first_name} {user.last_name}
                 </p>
                 <p className="text-xs text-slate-400 truncate capitalize">

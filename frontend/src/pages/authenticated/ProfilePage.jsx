@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, Save, Shield } from 'lucide-react';
+import { User, Save, Shield } from 'lucide-react';
 import { Navbar } from '../../components/shared/Navbar';
 import { Footer } from '../../components/shared/Footer';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,25 +8,32 @@ import { Input } from '../../components/ui/Input';
 import { Avatar } from '../../components/ui/Avatar';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import client from '../../api/client';
 
 export function ProfilePage() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    bio: user?.bio || ''
   });
 
   const handleSave = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    // In a real app, we'd update the user context here
+    try {
+      await client.put('/users/profile', {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        bio: formData.bio
+      });
+      alert('Profile updated successfully!');
+    } catch (error) {
+      alert('Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user) return null;
@@ -50,7 +57,7 @@ export function ProfilePage() {
           <Card className="p-8 flex flex-col md:flex-row items-center gap-6">
             <div className="relative">
               <Avatar
-                name={user.name}
+                name={`${user.first_name} ${user.last_name}`}
                 src={user.avatar}
                 size="lg"
                 className="h-24 w-24 text-2xl" />
@@ -60,7 +67,7 @@ export function ProfilePage() {
               </button>
             </div>
             <div className="text-center md:text-left flex-1">
-              <h2 className="text-2xl font-bold text-slate-900">{user.name}</h2>
+              <h2 className="text-2xl font-bold text-slate-900">{user.first_name} {user.last_name}</h2>
               <p className="text-slate-500 mb-3">{user.email}</p>
               <Badge variant="info" className="capitalize px-3 py-1 text-sm">
                 <Shield className="h-3 w-3 mr-1 inline" />
@@ -78,76 +85,38 @@ export function ProfilePage() {
               </h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <Input
-                  label="Full Name"
-                  value={formData.name}
+                  label="First Name"
+                  value={formData.first_name}
                   onChange={(e) =>
                   setFormData({
                     ...formData,
-                    name: e.target.value
+                    first_name: e.target.value
                   })
                   }
                   icon={User} />
 
                 <Input
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
+                  label="Last Name"
+                  value={formData.last_name}
                   onChange={(e) =>
                   setFormData({
                     ...formData,
-                    email: e.target.value
+                    last_name: e.target.value
                   })
                   }
-                  icon={Mail} />
+                  icon={User} />
 
-              </div>
-            </Card>
-
-            {/* Security */}
-            <Card className="p-8">
-              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                <Lock className="h-5 w-5 mr-2 text-indigo-600" />
-                Security
-              </h3>
-              <div className="space-y-6 max-w-md">
                 <Input
-                  label="Current Password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.currentPassword}
+                  label="Bio"
+                  value={formData.bio}
                   onChange={(e) =>
                   setFormData({
                     ...formData,
-                    currentPassword: e.target.value
+                    bio: e.target.value
                   })
-                  } />
+                  }
+                  icon={User} />
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Input
-                    label="New Password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.newPassword}
-                    onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      newPassword: e.target.value
-                    })
-                    } />
-
-                  <Input
-                    label="Confirm Password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      confirmPassword: e.target.value
-                    })
-                    } />
-
-                </div>
               </div>
             </Card>
 

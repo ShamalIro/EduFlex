@@ -206,20 +206,21 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id; // From token middleware
-    const { name, status } = req.body;
+    const { first_name, last_name, bio } = req.body;
 
     // Validate input
-    if (!name && status === undefined) {
+    if (!first_name && !last_name && !bio) {
       return res.status(400).json({
         success: false,
-        message: 'At least one field (name or status) is required for update'
+        message: 'At least one field is required for update'
       });
     }
 
     // Build update data
     const updateData = {};
-    if (name) updateData.name = name;
-    if (status !== undefined) updateData.status = status;
+    if (first_name) updateData.first_name = first_name;
+    if (last_name) updateData.last_name = last_name;
+    if (bio !== undefined) updateData.bio = bio;
 
     // Update user
     const updatedUser = await updateUser(userId, updateData);

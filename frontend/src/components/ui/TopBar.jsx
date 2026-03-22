@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Avatar } from './Avatar';
 
 export function TopBar({ title, onMenuClick }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
@@ -37,7 +39,12 @@ export function TopBar({ title, onMenuClick }) {
 
         {user && (
           <div className="flex items-center">
-            <Avatar name={`${user.first_name} ${user.last_name}`} src={user.avatar} size="sm" />
+            <div 
+              className="cursor-pointer hover:opacity-80"
+              onClick={() => navigate('/profile')}
+            >
+              <Avatar name={`${user.first_name} ${user.last_name}`} src={user.avatar} size="sm" />
+            </div>
           </div>
         )}
       </div>

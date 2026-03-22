@@ -32,7 +32,7 @@ export function LoginPage() {
       } else if (role === 'tutor') {
         navigate('/tutor/dashboard', { replace: true });
       } else {
-        navigate('/home', { replace: true });
+        navigate('/student/dashboard', { replace: true });
       }
     } catch (err) {
       setError('Invalid email or password');
