@@ -9,7 +9,8 @@ import {
   Users,
   Settings,
   LogOut,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Avatar } from './Avatar';
@@ -24,6 +25,7 @@ export function Sidebar({ isOpen, onClose }) {
     { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/student/courses', icon: BookOpen, label: 'Browse Courses' },
     { to: '/student/my-courses', icon: GraduationCap, label: 'My Courses' },
+    { to: '/student/assignments', icon: ClipboardList, label: 'Assignments' },
     { to: '/student/results', icon: BarChart3, label: 'My Progress' }
   ];
 

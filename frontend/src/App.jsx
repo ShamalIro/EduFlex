@@ -25,6 +25,7 @@ import { CourseDetail } from './pages/student/CourseDetail';
 import { LessonViewer } from './pages/student/LessonViewer';
 import { QuizPage } from './pages/student/QuizPage';
 import { ResultsPage } from './pages/student/ResultsPage';
+import { MyCourses } from './pages/student/MyCourses';
 
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
@@ -78,10 +79,12 @@ export function App() {
           >
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="courses" element={<CourseCatalog />} />
+            <Route path="my-courses" element={<MyCourses />} />
             <Route path="courses/:id" element={<CourseDetail />} />
             <Route path="lessons/:id" element={<LessonViewer />} />
             <Route path="quiz/:id" element={<QuizPage />} />
             <Route path="results" element={<ResultsPage />} />
+            <Route path="assignments" element={<div className="p-8 text-center text-slate-500">Assignments - Coming Soon</div>} />
             {/* Fallback for /student root */}
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
