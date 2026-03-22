@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -18,6 +18,7 @@ import { Avatar } from './Avatar';
 export function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -110,7 +111,10 @@ export function Sidebar({ isOpen, onClose }) {
                 className="mr-3"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
+                <p
+                  className="text-sm font-medium text-white truncate cursor-pointer hover:text-indigo-300"
+                  onClick={() => navigate('/profile')}
+                >
                   {user.first_name} {user.last_name}
                 </p>
                 <p className="text-xs text-slate-400 truncate capitalize">

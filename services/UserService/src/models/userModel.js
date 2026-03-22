@@ -119,7 +119,7 @@ const updateUser = async (userId, updateData) => {
     const connection = await pool.getConnection();
 
     // Build dynamic update query
-    const allowedFields = ['first_name', 'last_name', 'role', 'is_active'];
+    const allowedFields = ['first_name', 'last_name', 'bio', 'role', 'is_active'];
     const updates = [];
     const values = [];
 
