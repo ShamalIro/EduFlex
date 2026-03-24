@@ -25,6 +25,7 @@ import { CourseDetail } from './pages/student/CourseDetail';
 import { LessonViewer } from './pages/student/LessonViewer';
 import { QuizPage } from './pages/student/QuizPage';
 import { ResultsPage } from './pages/student/ResultsPage';
+import { MyCourses } from './pages/student/MyCourses';
 
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
@@ -72,18 +73,18 @@ export function App() {
             path="/student"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <DashboardLayout>
-                  <StudentDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="courses" element={<CourseCatalog />} />
+            <Route path="my-courses" element={<MyCourses />} />
             <Route path="courses/:id" element={<CourseDetail />} />
             <Route path="lessons/:id" element={<LessonViewer />} />
             <Route path="quiz/:id" element={<QuizPage />} />
             <Route path="results" element={<ResultsPage />} />
+            <Route path="assignments" element={<div className="p-8 text-center text-slate-500">Assignments - Coming Soon</div>} />
             {/* Fallback for /student root */}
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -93,9 +94,7 @@ export function App() {
             path="/tutor"
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
-                <DashboardLayout>
-                  <TutorDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
@@ -109,14 +108,14 @@ export function App() {
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <DashboardLayout>
-                  <AdminDashboard />
-                </DashboardLayout>
+                <DashboardLayout />
               </ProtectedRoute>
             }
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="courses" element={<div className="p-8 text-center text-slate-500">Course Management - Coming Soon</div>} />
+            <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

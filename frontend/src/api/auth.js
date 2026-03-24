@@ -1,76 +1,65 @@
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'Alex Student',
-    email: 'student@edu.com',
-    role: 'student',
-    avatar:
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: '2',
-    name: 'Sarah Tutor',
-    email: 'tutor@edu.com',
-    role: 'tutor',
-    avatar:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: '3',
-    name: 'Admin User',
-    email: 'admin@edu.com',
-    role: 'admin',
-    avatar:
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-  }
-];
+import client from './client';
 
 /**
+ * Login user
  * @param {string} email
  * @param {string} password
- * @returns {Promise<{token: string, user: import('../types').User}>}
+ * @returns {Promise<{token: string, user: object}>}
  */
 export const login = async (email, password) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  try {
+    const response = await client.post('/users/login', {
+      email,
+      password
+    });
 
-  const user = MOCK_USERS.find((u) => u.email === email);
+    const { token, user } = response.data.data;
 
-  if (user && password === 'password') {
-    const token = `mock-jwt-token-${user.id}-${Date.now()}`;
+    // Store token and user in localStorage
     localStorage.setItem('eduflex_token', token);
     localStorage.setItem('eduflex_user', JSON.stringify(user));
-    return { token, user };
-  }
 
-  throw new Error('Invalid credentials');
+    return { token, user };
+  } catch (error) {
+    const message = error.response?.data?.message || 'Login failed';
+    throw new Error(message);
+  }
 };
 
 /**
- * @param {string} name
+ * Register new user (student or tutor)
+ * @param {string} firstName
+ * @param {string} lastName
  * @param {string} email
  * @param {string} password
  * @param {'student'|'tutor'} role
- * @returns {Promise<{token: string, user: import('../types').User}>}
+ * @returns {Promise<{token: string, user: object}>}
  */
-export const register = async (name, email, password, role) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+export const register = async (firstName, lastName, email, password, role) => {
+  try {
+    const response = await client.post('/users/register', {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      password,
+      role
+    });
 
-  const newUser = {
-    id: Math.random().toString(36).substr(2, 9),
-    name,
-    email,
-    role,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-  };
+    const { token, user } = response.data.data;
 
-  const token = `mock-jwt-token-${newUser.id}-${Date.now()}`;
-  localStorage.setItem('eduflex_token', token);
-  localStorage.setItem('eduflex_user', JSON.stringify(newUser));
+    // Store token and user in localStorage
+    localStorage.setItem('eduflex_token', token);
+    localStorage.setItem('eduflex_user', JSON.stringify(user));
 
-  return { token, user: newUser };
+    return { token, user };
+  } catch (error) {
+    const message = error.response?.data?.message || 'Registration failed';
+    throw new Error(message);
+  }
 };
 
 /**
+ * Logout user
  * @returns {Promise<void>}
  */
 export const logout = async () => {
