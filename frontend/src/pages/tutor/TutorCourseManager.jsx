@@ -1,10 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 
 export function TutorCourseManager() {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -59,7 +62,11 @@ export function TutorCourseManager() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <Button variant="secondary" size="sm">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate(`/tutor/courses/${i}`)}
+                >
                   <Edit2 className="h-3.5 w-3.5 mr-2" />
                   Edit Content
                 </Button>
