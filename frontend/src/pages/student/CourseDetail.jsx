@@ -10,7 +10,8 @@ import {
   PlayCircle,
   Award
 } from 'lucide-react';
-import { getCourseById, getCourseLessons } from '../../api/courses';
+import { MOCK_COURSES } from '../../data/mockData';
+import { isEnrolled, enrollInCourse, getEnrollmentDetails } from '../../services/localStorageService';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
@@ -23,20 +24,46 @@ export function CourseDetail() {
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [isEnrolled, setIsEnrolled] = useState(false); // Mock state
+  const [enrolled, setEnrolled] = useState(false);
+  const [enrollment, setEnrollment] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (id) {
-        const courseData = await getCourseById(id);
-        const lessonsData = await getCourseLessons(id);
+    if (id) {
+      // Get course from mock data
+      const courseData = MOCK_COURSES.find(c => c.id === id);
+
+      if (courseData) {
         setCourse(courseData);
-        setLessons(lessonsData);
-        setIsLoading(false);
+
+        // Generate mock lessons
+        const mockLessons = Array.from({ length: courseData.lessonsCount || 10 }, (_, i) => ({
+          id: `${id}-lesson-${i + 1}`,
+          title: `Lesson ${i + 1}: ${courseData.title} - Part ${i + 1}`,
+          duration: `${Math.floor(Math.random() * 20 + 10)} min`,
+          completed: false
+        }));
+        setLessons(mockLessons);
+
+        // Check enrollment status
+        const enrollmentStatus = isEnrolled(id);
+        setEnrolled(enrollmentStatus);
+
+        if (enrollmentStatus) {
+          setEnrollment(getEnrollmentDetails(id));
+        }
       }
-    };
-    fetchData();
+
+      setIsLoading(false);
+    }
   }, [id]);
+
+  const handleEnroll = () => {
+    const result = enrollInCourse(id);
+    if (result.success) {
+      setEnrolled(true);
+      setEnrollment(getEnrollmentDetails(id));
+    }
+  };
 
   if (isLoading)
     return <div className="p-8 text-center">Loading course details...</div>;
@@ -91,23 +118,23 @@ export function CourseDetail() {
 
         <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-slate-100">
           <div className="flex-1 w-full">
-            {isEnrolled ? (
+            {enrolled ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm font-medium">
                   <span className="text-slate-700">Your Progress</span>
-                  <span className="text-indigo-600">35%</span>
+                  <span className="text-indigo-600">{enrollment?.progress || 0}%</span>
                 </div>
-                <ProgressBar value={35} />
+                <ProgressBar value={enrollment?.progress || 0} />
               </div>
             ) : (
               <p className="text-slate-600">
-                Join over {course.enrolledCount} students and master this skill
+                Join over {course.enrolledCount.toLocaleString()} students and master this skill
                 today.
               </p>
             )}
           </div>
           <div className="flex gap-3 w-full md:w-auto">
-            {isEnrolled ? (
+            {enrolled ? (
               <Button
                 size="lg"
                 className="w-full md:w-auto"
@@ -119,7 +146,7 @@ export function CourseDetail() {
               <Button
                 size="lg"
                 className="w-full md:w-auto"
-                onClick={() => setIsEnrolled(true)}
+                onClick={handleEnroll}
               >
                 Enroll Now
               </Button>
@@ -180,47 +207,53 @@ export function CourseDetail() {
 
             {activeTab === 'lessons' && (
               <div className="space-y-4 animate-in fade-in duration-300">
-                {lessons.map((lesson, idx) => (
-                  <div
-                    key={lesson.id}
-                    className={`
-                      flex items-center p-4 rounded-lg border transition-colors
-                      ${isEnrolled ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer' : 'bg-slate-50 border-slate-200 opacity-75'}
-                    `}
-                    onClick={() =>
-                      isEnrolled && navigate(`/student/lessons/${lesson.id}`)
-                    }
-                  >
-                    <div className="flex-shrink-0 mr-4">
-                      {lesson.completed ? (
-                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                          <CheckCircle className="h-5 w-5" />
-                        </div>
-                      ) : isEnrolled ? (
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                          <PlayCircle className="h-5 w-5" />
-                        </div>
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
-                          <Lock className="h-4 w-4" />
-                        </div>
+                {lessons.map((lesson, idx) => {
+                  const isCompleted = enrollment?.completedLessons?.includes(lesson.id) || false;
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={`
+                        flex items-center p-4 rounded-lg border transition-colors
+                        ${enrolled ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer' : 'bg-slate-50 border-slate-200 opacity-75'}
+                      `}
+                      onClick={() =>
+                        enrolled && navigate(`/student/lessons/${lesson.id}`)
+                      }
+                    >
+                      <div className="flex-shrink-0 mr-4">
+                        {isCompleted ? (
+                          <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <CheckCircle className="h-5 w-5" />
+                          </div>
+                        ) : enrolled ? (
+                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <PlayCircle className="h-5 w-5" />
+                          </div>
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                            <Lock className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-slate-900">
+                          {idx + 1}. {lesson.title}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {lesson.duration}
+                        </p>
+                      </div>
+                      {enrolled && !isCompleted && (
+                        <Button variant="ghost" size="sm">
+                          Start
+                        </Button>
+                      )}
+                      {isCompleted && (
+                        <span className="text-xs text-emerald-600 font-medium">Completed</span>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-900">
-                        {idx + 1}. {lesson.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {lesson.duration}
-                      </p>
-                    </div>
-                    {isEnrolled && (
-                      <Button variant="ghost" size="sm">
-                        Start
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
