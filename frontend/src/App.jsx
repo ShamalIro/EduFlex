@@ -24,12 +24,15 @@ import { CourseCatalog } from './pages/student/CourseCatalog';
 import { CourseDetail } from './pages/student/CourseDetail';
 import { LessonViewer } from './pages/student/LessonViewer';
 import { QuizPage } from './pages/student/QuizPage';
+import { StudentQuizAttempt } from './pages/student/StudentQuizAttempt';
 import { ResultsPage } from './pages/student/ResultsPage';
 import { MyCourses } from './pages/student/MyCourses';
+import { StudentAssignments } from './pages/student/StudentAssignments';
 
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
 import { TutorCourseManager } from './pages/tutor/TutorCourseManager';
+import { TutorCourseDetail } from './pages/tutor/TutorCourseDetail';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -83,8 +86,9 @@ export function App() {
             <Route path="courses/:id" element={<CourseDetail />} />
             <Route path="lessons/:id" element={<LessonViewer />} />
             <Route path="quiz/:id" element={<QuizPage />} />
+            <Route path="quiz-attempt/:id" element={<StudentQuizAttempt />} />
             <Route path="results" element={<ResultsPage />} />
-            <Route path="assignments" element={<div className="p-8 text-center text-slate-500">Assignments - Coming Soon</div>} />
+            <Route path="assignments" element={<StudentAssignments />} />
             {/* Fallback for /student root */}
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -100,6 +104,7 @@ export function App() {
           >
             <Route path="dashboard" element={<TutorDashboard />} />
             <Route path="courses" element={<TutorCourseManager />} />
+            <Route path="courses/:id" element={<TutorCourseDetail />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
