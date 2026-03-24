@@ -7,12 +7,27 @@ import {
 
 const AuthContext = createContext(undefined);
 
+// TODO: Remove this bypass when login is ready
+const DEV_BYPASS_AUTH = true;
+// Change this to 'student', 'tutor', or 'admin' to test different roles
+const DEV_MOCK_ROLE = 'tutor';
+const DEV_MOCK_USER = {
+  id: 'dev-user-123',
+  firstName: 'Dev',
+  lastName: 'User',
+  email: 'dev@example.com',
+  role: DEV_MOCK_ROLE
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(DEV_BYPASS_AUTH ? DEV_MOCK_USER : null);
+  const [token, setToken] = useState(DEV_BYPASS_AUTH ? 'dev-token' : null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) return; // Skip loading from storage in dev bypass mode
+
+    setIsLoading(true);
     const storedToken = localStorage.getItem('eduflex_token');
     const storedUser = localStorage.getItem('eduflex_user');
 
@@ -31,7 +46,6 @@ export function AuthProvider({ children }) {
     const response = await apiLogin(email, password);
     setToken(response.token);
     setUser(response.user);
-    return response;
   };
 
   /**

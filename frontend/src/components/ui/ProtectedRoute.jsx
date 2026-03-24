@@ -3,9 +3,17 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
+// TODO: Remove this bypass when login is ready
+const DEV_BYPASS_AUTH = true;
+
 export function ProtectedRoute({ children, allowedRoles }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+
+  // Temporary bypass for development - allows access to all routes without login
+  if (DEV_BYPASS_AUTH) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
