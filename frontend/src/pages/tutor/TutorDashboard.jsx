@@ -1,10 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, BookOpen, Star, MessageSquare } from 'lucide-react';
 import { StatsCard } from '../../components/shared/StatsCard';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
 export function TutorDashboard() {
+  const navigate = useNavigate();
+
   const stats = [
     {
       label: 'Total Students',
@@ -56,6 +59,7 @@ export function TutorDashboard() {
               <div
                 key={i}
                 className="flex items-center p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={() => navigate(`/tutor/courses/${i}`)}
               >
                 <div className="h-12 w-12 bg-slate-200 rounded-md mr-4" />
                 <div className="flex-1">
@@ -73,7 +77,11 @@ export function TutorDashboard() {
               </div>
             ))}
           </div>
-          <Button variant="ghost" className="w-full mt-4 text-sm">
+          <Button
+            variant="ghost"
+            className="w-full mt-4 text-sm"
+            onClick={() => navigate('/tutor/courses')}
+          >
             View All Courses
           </Button>
         </Card>
