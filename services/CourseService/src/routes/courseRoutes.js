@@ -12,19 +12,19 @@ const {
 const { authMiddleware, isTutor } = require('../middleware/authMiddleware');
 
 // Public routes
-router.get('/', getAllCourses);
-router.get('/:id', getCourseById);
-
-// Protected routes (tutor only)
-router.post('/', authMiddleware, isTutor, createCourse);
-router.get('/tutor/my-courses', authMiddleware, isTutor, getMyCourses);
-router.put('/:id', authMiddleware, isTutor, updateCourse);
-router.delete('/:id', authMiddleware, isTutor, deleteCourse);
-router.patch('/:id/publish', authMiddleware, isTutor, togglePublish);
-
-// Health check
 router.get('/health/check', (req, res) => {
   res.json({ status: 'OK', message: 'Course Service routes working' });
 });
+router.get('/', getAllCourses);
+
+// Protected routes (specific before dynamic!)
+router.post('/', authMiddleware, isTutor, createCourse);
+router.get('/tutor/my-courses', authMiddleware, isTutor, getMyCourses);
+
+// Dynamic routes (always last!)
+router.get('/:id', getCourseById);
+router.put('/:id', authMiddleware, isTutor, updateCourse);
+router.delete('/:id', authMiddleware, isTutor, deleteCourse);
+router.patch('/:id/publish', authMiddleware, isTutor, togglePublish);
 
 module.exports = router;

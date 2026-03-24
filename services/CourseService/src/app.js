@@ -22,7 +22,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/api/courses', require('./routes/courseRoutes'));
+// Routes are mounted at / because API Gateway handles /api/courses prefix
+app.use('/', require('./routes/courseRoutes'));
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });

@@ -100,6 +100,26 @@ export function App() {
           >
             <Route path="dashboard" element={<TutorDashboard />} />
             <Route path="courses" element={<TutorCourseManager />} />
+            <Route 
+              path="courses/:courseId/assessments" 
+              element={
+                <div className="p-8 text-center">
+                  <h2 className="text-2xl font-bold text-slate-900 mb-4">Assessments</h2>
+                  <p className="text-slate-500">Assessment Management - Coming Soon</p>
+                  <p className="text-slate-400 text-sm mt-2">This will be built by the AssessmentService team</p>
+                </div>
+              } 
+            />
+            <Route 
+              path="students" 
+              element={
+                <div className="p-8 text-center">
+                  <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
+                  <p className="text-slate-500">Student Management - Coming Soon</p>
+                  <p className="text-slate-400 text-sm mt-2">This will be available when EnrollmentService is ready</p>
+                </div>
+              } 
+            />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

@@ -57,9 +57,6 @@ export function RegisterPage() {
             </p>
           </div>
         </div>
-        <div className="relative z-10 text-sm text-slate-500">
-          © 2024 EduFlex LMS. All rights reserved.
-        </div>
       </div>
 
       {/* Right Side - Form */}
