@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle, Award, Clock } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { getEnrolledCourses } from '../../api/courses';
+import { MOCK_COURSES } from '../../data/mockData';
+import { getEnrollments } from '../../services/localStorageService';
 import { StatsCard } from '../../components/shared/StatsCard';
 import { CourseCard } from '../../components/shared/CourseCard';
 import { Button } from '../../components/ui/Button';
@@ -15,17 +16,21 @@ export function StudentDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getEnrolledCourses();
-        setCourses(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    // Get enrollments from localStorage
+    const enrollments = getEnrollments();
+
+    // Map enrollments to full course data
+    const enrolledCourses = enrollments.map(enrollment => {
+      const course = MOCK_COURSES.find(c => c.id === enrollment.courseId);
+      return course ? {
+        ...course,
+        progress: enrollment.progress,
+        enrolledAt: enrollment.enrolledAt
+      } : null;
+    }).filter(Boolean);
+
+    setCourses(enrolledCourses);
+    setIsLoading(false);
   }, []);
 
   const stats = [
