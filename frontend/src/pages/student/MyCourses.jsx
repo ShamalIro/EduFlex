@@ -3,6 +3,8 @@ import { BookOpen, Clock, ArrowRight, ClipboardList } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { MOCK_COURSES } from '../../data/mockData';
+import { getEnrollments } from '../../services/localStorageService';
 
 export function MyCourses() {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
@@ -10,13 +12,21 @@ export function MyCourses() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // TODO: Replace with real API call when CourseService is ready
-    // const data = await getEnrolledCourses();
-    // setEnrolledCourses(data);
-    setTimeout(() => {
-      setEnrolledCourses([]);
-      setIsLoading(false);
-    }, 500);
+    // Get enrollments from localStorage
+    const enrollments = getEnrollments();
+
+    // Map enrollments to full course data
+    const courses = enrollments.map(enrollment => {
+      const course = MOCK_COURSES.find(c => c.id === enrollment.courseId);
+      return course ? {
+        ...course,
+        progress: enrollment.progress,
+        enrolledAt: enrollment.enrolledAt
+      } : null;
+    }).filter(Boolean); // Remove null values
+
+    setEnrolledCourses(courses);
+    setIsLoading(false);
   }, []);
 
   if (isLoading) {
