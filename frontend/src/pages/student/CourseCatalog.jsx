@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { getCourses } from '../../api/courses';
+import { MOCK_COURSES } from '../../data/mockData';
 import { CourseCard } from '../../components/shared/CourseCard';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -15,13 +15,12 @@ export function CourseCatalog() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      const data = await getCourses();
-      setCourses(data);
-      setFilteredCourses(data);
+    // Load courses from mock data
+    setTimeout(() => {
+      setCourses(MOCK_COURSES);
+      setFilteredCourses(MOCK_COURSES);
       setIsLoading(false);
-    };
-    fetchCourses();
+    }, 300);
   }, []);
 
   useEffect(() => {
