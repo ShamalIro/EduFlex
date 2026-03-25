@@ -94,7 +94,15 @@ const getCourseById = async (req, res) => {
 // Get tutor's own courses
 const getMyCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ tutor_id: req.user.id }).sort({ createdAt: -1 });
+    const tutorId = req.user.id;
+    const numericTutorId = Number(tutorId);
+    const tutorFilters = [{ tutor_id: tutorId }];
+
+    if (!Number.isNaN(numericTutorId)) {
+      tutorFilters.push({ tutor_id: numericTutorId });
+    }
+
+    const courses = await Course.find({ $or: tutorFilters }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -122,7 +130,7 @@ const updateCourse = async (req, res) => {
       });
     }
 
-    if (course.tutor_id !== req.user.id && req.user.role !== 'admin') {
+    if (String(course.tutor_id) !== String(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this course'
@@ -162,7 +170,7 @@ const deleteCourse = async (req, res) => {
       });
     }
 
-    if (course.tutor_id !== req.user.id && req.user.role !== 'admin') {
+    if (String(course.tutor_id) !== String(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this course'

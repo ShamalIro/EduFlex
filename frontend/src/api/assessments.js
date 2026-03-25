@@ -1,3 +1,5 @@
+import courseClient from './courseClient';
+
 const MOCK_QUIZ = {
   id: 'q1',
   courseId: '1',
@@ -107,4 +109,70 @@ export const getResults = async () => {
       answers: [1, 2, 1, 1, 0]
     }
   ];
+};
+
+const extractList = (responseData, key) => {
+  const scoped = responseData?.data?.[key];
+  if (Array.isArray(scoped)) return scoped;
+  const direct = responseData?.[key];
+  if (Array.isArray(direct)) return direct;
+  return [];
+};
+
+const extractItem = (responseData, key) => {
+  const scoped = responseData?.data?.[key];
+  if (scoped) return scoped;
+  const direct = responseData?.[key];
+  if (direct) return direct;
+  return null;
+};
+
+// Tutor Assignment CRUD
+export const getCourseAssignments = async (courseId) => {
+  try {
+    const response = await courseClient.get(`/assignments/courses/${courseId}/assignments`);
+    return extractList(response.data, 'assignments');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const createCourseAssignment = async (courseId, payload) => {
+  const response = await courseClient.post(`/assignments/courses/${courseId}/assignments`, payload);
+  return extractItem(response.data, 'assignment') || response.data;
+};
+
+export const updateCourseAssignment = async (assignmentId, payload) => {
+  const response = await courseClient.put(`/assignments/assignments/${assignmentId}`, payload);
+  return extractItem(response.data, 'assignment') || response.data;
+};
+
+export const deleteCourseAssignment = async (assignmentId) => {
+  await courseClient.delete(`/assignments/assignments/${assignmentId}`);
+};
+
+// Tutor Quiz CRUD
+export const getCourseQuizzes = async (courseId) => {
+  try {
+    const response = await courseClient.get(`/assignments/courses/${courseId}/quizzes`);
+    return extractList(response.data, 'quizzes');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const createCourseQuiz = async (courseId, payload) => {
+  const response = await courseClient.post(`/assignments/courses/${courseId}/quizzes`, payload);
+  return extractItem(response.data, 'quiz') || response.data;
+};
+
+export const updateCourseQuiz = async (quizId, payload) => {
+  const response = await courseClient.put(`/assignments/quizzes/${quizId}`, payload);
+  return extractItem(response.data, 'quiz') || response.data;
+};
+
+export const deleteCourseQuiz = async (quizId) => {
+  await courseClient.delete(`/assignments/quizzes/${quizId}`);
 };

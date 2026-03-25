@@ -1,5 +1,47 @@
-const pool = require('../config/database');
+const { mongoose } = require('../config/database');
 const bcrypt = require('bcryptjs');
+
+const { Schema } = mongoose;
+
+const userSchema = new Schema(
+  {
+    first_name: { type: String, required: true, trim: true },
+    last_name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true },
+    bio: { type: String, default: '' },
+    role: { type: String, enum: ['student', 'tutor', 'admin'], required: true },
+    is_active: { type: Boolean, default: true }
+  },
+  {
+    collection: 'users',
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
+  }
+);
+
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+const toUserResponse = (doc, includePassword = false) => {
+  if (!doc) return null;
+
+  const user = doc.toObject ? doc.toObject() : doc;
+  const base = {
+    id: user._id.toString(),
+    first_name: user.first_name,
+    last_name: user.last_name,
+    email: user.email,
+    bio: user.bio,
+    role: user.role,
+    is_active: user.is_active,
+    created_at: user.created_at
+  };
+
+  if (includePassword) {
+    base.password = user.password;
+  }
+
+  return base;
+};
 
 /**
  * Find user by email
@@ -8,13 +50,10 @@ const bcrypt = require('bcryptjs');
  */
 const findByEmail = async (email) => {
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
-      'SELECT id, first_name, last_name, email, role, is_active FROM users WHERE email = ?',
-      [email]
-    );
-    connection.release();
-    return rows.length > 0 ? rows[0] : null;
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .select('first_name last_name email role is_active bio created_at')
+      .lean();
+    return toUserResponse(user);
   } catch (error) {
     console.error('Database error in findByEmail:', error.message);
     throw error;
@@ -28,13 +67,14 @@ const findByEmail = async (email) => {
  */
 const findById = async (userId) => {
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
-      'SELECT id, first_name, last_name, email, role, is_active, created_at FROM users WHERE id = ?',
-      [userId]
-    );
-    connection.release();
-    return rows.length > 0 ? rows[0] : null;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return null;
+    }
+
+    const user = await User.findById(userId)
+      .select('first_name last_name email role is_active bio created_at')
+      .lean();
+    return toUserResponse(user);
   } catch (error) {
     console.error('Database error in findById:', error.message);
     throw error;
@@ -53,21 +93,21 @@ const createUser = async (userData) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const connection = await pool.getConnection();
-    const query = `
-INSERT INTO users (first_name, last_name, email, password, role, is_active, created_at)
-VALUES (?, ?, ?, ?, ?, 1, NOW())
-    `;
-    const [result] = await connection.query(query, [
-first_name, last_name, email, hashedPassword, role
-    ]);
-    connection.release();
+    const createdUser = await User.create({
+      first_name,
+      last_name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role,
+      is_active: true
+    });
 
-    // Return created user (without password)
-    return {
-      id: result.insertId, first_name, last_name, email, role, is_active: 1
-    };
+    return toUserResponse(createdUser);
   } catch (error) {
+    if (error.code === 11000) {
+      throw new Error('Email already registered');
+    }
+
     console.error('Database error in createUser:', error.message);
     throw error;
   }
@@ -95,13 +135,10 @@ const verifyPassword = async (plainPassword, hashedPassword) => {
  */
 const findByEmailWithPassword = async (email) => {
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query(
-      'SELECT id, first_name, last_name, email, password, role, is_active FROM users WHERE email = ?',
-      [email]
-    );
-    connection.release();
-    return rows.length > 0 ? rows[0] : null;
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .select('first_name last_name email password role is_active bio created_at')
+      .lean();
+    return toUserResponse(user, true);
   } catch (error) {
     console.error('Database error in findByEmailWithPassword:', error.message);
     throw error;
@@ -116,36 +153,36 @@ const findByEmailWithPassword = async (email) => {
  */
 const updateUser = async (userId, updateData) => {
   try {
-    const connection = await pool.getConnection();
-
-    // Build dynamic update query
     const allowedFields = ['first_name', 'last_name', 'bio', 'role', 'is_active'];
-    const updates = [];
-    const values = [];
+    const updates = {};
 
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
-        updates.push(`${field} = ?`);
-        values.push(updateData[field]);
+        updates[field] = updateData[field];
       }
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 0) {
       throw new Error('No valid fields to update');
     }
 
-    values.push(userId);
-
-    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
-    const [result] = await connection.query(query, values);
-    connection.release();
-
-    if (result.affectedRows === 0) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       throw new Error('User not found');
     }
 
-    // Return updated user
-    return await findById(userId);
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .select('first_name last_name email role is_active bio created_at')
+      .lean();
+
+    if (!updatedUser) {
+      throw new Error('User not found');
+    }
+
+    return toUserResponse(updatedUser);
   } catch (error) {
     console.error('Database error in updateUser:', error.message);
     throw error;
@@ -159,44 +196,33 @@ const updateUser = async (userId, updateData) => {
  */
 const getAllUsers = async (options = {}) => {
   try {
-    const limit = options.limit || 10;
-    const offset = options.offset || 0;
-
-    const connection = await pool.getConnection();
-
-    // Build where clause
-    let whereClause = 'WHERE 1=1';
-    const queryParams = [];
+    const limit = Number(options.limit) || 10;
+    const offset = Number(options.offset) || 0;
+    const filters = {};
 
     if (options.role) {
-      whereClause += ' AND role = ?';
-      queryParams.push(options.role);
+      filters.role = options.role;
     }
 
-    if (options.status) {
-      whereClause += ' AND is_active = ?';
-      queryParams.push(options.status);
+    if (options.status !== undefined) {
+      const normalized = String(options.status).toLowerCase();
+      if (['1', 'true', 'active'].includes(normalized)) {
+        filters.is_active = true;
+      } else if (['0', 'false', 'inactive'].includes(normalized)) {
+        filters.is_active = false;
+      }
     }
 
-    // Get total count
-    const [countResult] = await connection.query(
-      `SELECT COUNT(*) as total FROM users ${whereClause}`,
-      queryParams
-    );
-    const total = countResult[0].total;
-
-    // Get users
-    const [rows] = await connection.query(
-      `SELECT id, first_name, last_name, email, role, is_active, created_at FROM users 
-       ${whereClause} 
-       ORDER BY created_at DESC 
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
-    connection.release();
+    const total = await User.countDocuments(filters);
+    const users = await User.find(filters)
+      .select('first_name last_name email role is_active bio created_at')
+      .sort({ created_at: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean();
 
     return {
-      users: rows,
+      users: users.map((user) => toUserResponse(user)),
       total,
       limit,
       offset
@@ -214,11 +240,12 @@ const getAllUsers = async (options = {}) => {
  */
 const deleteUser = async (userId) => {
   try {
-    const connection = await pool.getConnection();
-    const [result] = await connection.query('DELETE FROM users WHERE id = ?', [userId]);
-    connection.release();
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return false;
+    }
 
-    return result.affectedRows > 0;
+    const deleted = await User.findByIdAndDelete(userId);
+    return !!deleted;
   } catch (error) {
     console.error('Database error in deleteUser:', error.message);
     throw error;

@@ -17,7 +17,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('dev'));
-app.use(express.json());
+// Do not parse bodies in the gateway; proxied services need the raw request stream.
 
 // Health check
 app.get('/health', (req, res) => {

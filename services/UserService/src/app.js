@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { connectDB } = require('./config/database');
 
 // Ensure service-local .env is loaded even if the process is started elsewhere
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -40,7 +41,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 User Service running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 User Service running on port ${PORT}`);
+      console.log(`📍 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error('Failed to start User Service:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
