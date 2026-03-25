@@ -30,6 +30,7 @@ import { MyCourses } from './pages/student/MyCourses';
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
 import { TutorCourseManager } from './pages/tutor/TutorCourseManager';
+import { TutorAssessmentsManager } from './pages/tutor/TutorAssessmentsManager';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -102,13 +103,7 @@ export function App() {
             <Route path="courses" element={<TutorCourseManager />} />
             <Route 
               path="courses/:courseId/assessments" 
-              element={
-                <div className="p-8 text-center">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-4">Assessments</h2>
-                  <p className="text-slate-500">Assessment Management - Coming Soon</p>
-                  <p className="text-slate-400 text-sm mt-2">This will be built by the AssessmentService team</p>
-                </div>
-              } 
+              element={<TutorAssessmentsManager />} 
             />
             <Route 
               path="students" 
