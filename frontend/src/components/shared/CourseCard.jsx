@@ -16,7 +16,7 @@ export function CourseCard({
     <Card hoverable className="flex flex-col h-full">
       <div className="relative h-48 bg-slate-200">
         <img
-          src={course.thumbnail}
+          src={course.thumbnail || 'https://placehold.co/400x200?text=No+Image'}
           alt={course.title}
           className="w-full h-full object-cover" />
 
@@ -45,14 +45,14 @@ export function CourseCard({
           {course.title}
         </h3>
 
-        <p className="text-sm text-slate-500 mb-4">by {course.tutor}</p>
+        <p className="text-sm text-slate-500 mb-4">by {course.tutor_name}</p>
 
         <div className="mt-auto space-y-4">
           {!isEnrolled ?
           <>
               <div className="flex items-center text-sm text-slate-500">
                 <Users className="h-4 w-4 mr-1.5" />
-                {course.enrolledCount.toLocaleString()} students
+                {(course.students_count || 0).toLocaleString()} students
               </div>
               <Button onClick={onEnroll} className="w-full">
                 Enroll Now
