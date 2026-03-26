@@ -44,6 +44,9 @@ app.use('/api/users', createProxyMiddleware({
 app.use('/api/courses', createProxyMiddleware({
   target: process.env.COURSE_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: {
+    '^/api/courses': ''
+  },
   on: {
     error: (err, req, res) => {
       console.error('Course service proxy error:', err);
