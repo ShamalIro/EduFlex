@@ -27,6 +27,7 @@ export function Sidebar({ isOpen, onClose }) {
     { to: '/student/courses', icon: BookOpen, label: 'Browse Courses' },
     { to: '/student/my-courses', icon: GraduationCap, label: 'My Courses' },
     { to: '/student/assignments', icon: ClipboardList, label: 'Assignments' },
+    { to: '/student/quizzes', icon: ClipboardCheck, label: 'Quizzes' },
     { to: '/student/results', icon: BarChart3, label: 'My Progress' }
   ];
 

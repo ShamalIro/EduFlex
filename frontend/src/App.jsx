@@ -87,6 +87,7 @@ export function App() {
             <Route path="quiz/:id" element={<QuizPage />} />
             <Route path="results" element={<ResultsPage />} />
             <Route path="assignments" element={<div className="p-8 text-center text-slate-500">Assignments - Coming Soon</div>} />
+            <Route path="quizzes" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold text-slate-900 mb-4">Quizzes</h2><p className="text-slate-500">Quizzes - Coming Soon</p><p className="text-slate-400 text-sm mt-2">Available when AssessmentService is ready</p></div>} />
             {/* Fallback for /student root */}
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
