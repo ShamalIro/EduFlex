@@ -30,6 +30,7 @@ import { MyCourses } from './pages/student/MyCourses';
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
 import { TutorCourseManager } from './pages/tutor/TutorCourseManager';
+import { CreateCourse } from './pages/tutor/CreateCourse';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -99,6 +100,7 @@ export function App() {
             }
           >
             <Route path="dashboard" element={<TutorDashboard />} />
+            <Route path="create-course" element={<CreateCourse />} />
             <Route path="courses" element={<TutorCourseManager />} />
             <Route 
               path="courses/:courseId/assessments" 

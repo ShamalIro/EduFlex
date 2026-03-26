@@ -100,9 +100,9 @@ export function CourseCatalog() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) =>
         <CourseCard
-          key={course.id}
+          key={course._id}
           course={course}
-          onEnroll={() => navigate(`/student/courses/${course.id}`)} />
+          onEnroll={() => navigate(`/student/courses/${course._id}`)} />
 
         )}
         </div>

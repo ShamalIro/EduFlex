@@ -58,7 +58,7 @@ export function TutorCourseManager() {
           <h1 className="text-2xl font-bold text-slate-900">Course Management</h1>
           <p className="text-slate-500">Manage your courses, lessons, and assessments</p>
         </div>
-        <Button>
+        <Button onClick={() => navigate('/tutor/create-course')}>
           <Plus className="h-4 w-4 mr-2" />
           Create Course
         </Button>
