@@ -19,6 +19,7 @@ app.use(cors({
 app.use(morgan('dev'));
 // Do not parse bodies in the gateway; proxied services need the raw request stream.
 
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
