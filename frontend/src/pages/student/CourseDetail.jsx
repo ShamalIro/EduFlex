@@ -10,7 +10,12 @@ import {
   PlayCircle,
   Award
 } from 'lucide-react';
-import { getCourseById, getCourseLessons } from '../../api/courses';
+import {
+  getCourseById,
+  getCourseLessons,
+  enrollInCourse,
+  getEnrollmentStatus
+} from '../../api/courses';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
@@ -23,20 +28,43 @@ export function CourseDetail() {
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [isEnrolled, setIsEnrolled] = useState(false); // Mock state
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+
+  const enrolledCount = Number.isFinite(Number(course?.enrolledCount))
+    ? Number(course.enrolledCount)
+    : 0;
+  const lessonsCount = Number.isFinite(Number(course?.lessonsCount))
+    ? Number(course.lessonsCount)
+    : lessons.length;
 
   useEffect(() => {
     const fetchData = async () => {
       if (id) {
         const courseData = await getCourseById(id);
         const lessonsData = await getCourseLessons(id);
+        const enrollmentData = await getEnrollmentStatus(id);
         setCourse(courseData);
         setLessons(lessonsData);
+        setIsEnrolled(Boolean(enrollmentData?.isEnrolled));
         setIsLoading(false);
       }
     };
     fetchData();
   }, [id]);
+
+  const handleEnroll = async () => {
+    if (!id || isEnrolled) return;
+    setIsEnrolling(true);
+    try {
+      await enrollInCourse(id);
+      setIsEnrolled(true);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
 
   if (isLoading)
     return <div className="p-8 text-center">Loading course details...</div>;
@@ -78,7 +106,7 @@ export function CourseDetail() {
                 </div>
                 <div className="flex items-center">
                   <Users className="h-4 w-4 mr-1 opacity-80" />
-                  <span>{course.enrolledCount.toLocaleString()} students</span>
+                  <span>{enrolledCount.toLocaleString()} students</span>
                 </div>
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-1 opacity-80" />
@@ -101,7 +129,7 @@ export function CourseDetail() {
               </div>
             ) : (
               <p className="text-slate-600">
-                Join over {course.enrolledCount} students and master this skill
+                Join over {enrolledCount.toLocaleString()} students and master this skill
                 today.
               </p>
             )}
@@ -119,7 +147,8 @@ export function CourseDetail() {
               <Button
                 size="lg"
                 className="w-full md:w-auto"
-                onClick={() => setIsEnrolled(true)}
+                onClick={handleEnroll}
+                isLoading={isEnrolling}
               >
                 Enroll Now
               </Button>
@@ -239,7 +268,7 @@ export function CourseDetail() {
             <ul className="space-y-4">
               <li className="flex items-center text-sm text-slate-600">
                 <BookOpen className="h-5 w-5 text-slate-400 mr-3" />
-                {course.lessonsCount} Lessons
+                {lessonsCount} Lessons
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Clock className="h-5 w-5 text-slate-400 mr-3" />

@@ -57,7 +57,15 @@ export function CreateCourse() {
 
     setLoading(true);
     try {
-      await createCourse(formData);
+      await createCourse({
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        level: formData.level,
+        duration: formData.duration.trim(),
+        price: Number(formData.price),
+        thumbnail: formData.thumbnail.trim() || null
+      });
       navigate('/tutor/courses');
     } catch (err) {
       console.error('Error creating course:', err);
