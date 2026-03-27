@@ -33,6 +33,7 @@ app.get('/health', (req, res) => {
 app.use('/api/users', createProxyMiddleware({
   target: process.env.USER_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: { '^/api/users': '/api/users' },
   on: {
     error: (err, req, res) => {
       console.error('User service proxy error:', err);
@@ -44,9 +45,7 @@ app.use('/api/users', createProxyMiddleware({
 app.use('/api/courses', createProxyMiddleware({
   target: process.env.COURSE_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/courses': ''
-  },
+  pathRewrite: { '^/api/courses': '' },
   on: {
     error: (err, req, res) => {
       console.error('Course service proxy error:', err);
@@ -58,6 +57,7 @@ app.use('/api/courses', createProxyMiddleware({
 app.use('/api/assignments', createProxyMiddleware({
   target: process.env.ASSIGNMENT_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: { '^/api/assignments': '' },
   on: {
     error: (err, req, res) => {
       console.error('Assignment service proxy error:', err);
@@ -83,6 +83,7 @@ app.use('/api/enrollments', createProxyMiddleware({
 app.use('/api/grades', createProxyMiddleware({
   target: process.env.GRADE_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: { '^/api/grades': '' },
   on: {
     error: (err, req, res) => {
       console.error('Grade service proxy error:', err);

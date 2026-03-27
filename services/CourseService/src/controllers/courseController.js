@@ -251,6 +251,21 @@ const togglePublish = async (req, res) => {
   }
 };
 
+// Get admin statistics
+const getAdminStats = async (req, res) => {
+  try {
+    const totalCourses = await Course.countDocuments();
+    const published = await Course.countDocuments({ is_published: true });
+    const byCategory = await Course.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    res.json({ totalCourses, published, byCategory });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createCourse,
   getAllCourses,
@@ -258,5 +273,6 @@ module.exports = {
   getMyCourses,
   updateCourse,
   deleteCourse,
-  togglePublish
+  togglePublish,
+  getAdminStats
 };

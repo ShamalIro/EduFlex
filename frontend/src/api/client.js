@@ -2,12 +2,13 @@ import axios from 'axios';
 
 // Create axios instance with UserService base URL
 const client = axios.create({
-  baseURL: 'http://localhost:4001/api',
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
 
 /**
  * Add JWT token to request headers if it exists
