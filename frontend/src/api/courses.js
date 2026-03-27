@@ -47,3 +47,9 @@ export const togglePublishCourse = async (id) => {
   const response = await courseClient.patch(`/courses/${id}/publish`);
   return response.data.data.course;
 };
+
+// Get admin course statistics
+export const getAdminCourseStats = async () => {
+  const res = await courseClient.get('/courses/admin/stats');
+  return res.data;
+};
