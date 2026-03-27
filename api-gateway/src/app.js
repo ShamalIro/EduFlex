@@ -66,6 +66,20 @@ app.use('/api/assignments', createProxyMiddleware({
   }
 }));
 
+app.use('/api/enrollments', createProxyMiddleware({
+  target: process.env.ENROLLMENT_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/enrollments': ''
+  },
+  on: {
+    error: (err, req, res) => {
+      console.error('Enrollment service proxy error:', err);
+      res.status(503).json({ error: 'Enrollment service unavailable' });
+    }
+  }
+}));
+
 app.use('/api/grades', createProxyMiddleware({
   target: process.env.GRADE_SERVICE_URL,
   changeOrigin: true,

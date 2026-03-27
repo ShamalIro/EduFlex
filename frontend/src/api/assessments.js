@@ -60,8 +60,40 @@ const MOCK_QUIZ = {
  * @returns {Promise<import('../types').Quiz>}
  */
 export const getQuizByCourse = async (courseId) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  return MOCK_QUIZ;
+  const response = await courseClient.get(`/assignments/student/courses/${courseId}/quizzes`);
+  const quizzes = extractList(response.data, 'quizzes');
+  if (!quizzes.length) {
+    return null;
+  }
+
+  const quiz = quizzes[0];
+  return {
+    id: quiz._id || quiz.id,
+    courseId: quiz.course_id,
+    title: quiz.title,
+    timeLimit: quiz.timeLimit || 15,
+    totalPoints: quiz.totalPoints || 50,
+    questions: (quiz.questions || []).map((question, index) => {
+      const options = (question.options || []).map((option) => option.text);
+      const correctAnswer = (question.options || []).findIndex((option) => option.isCorrect);
+
+      if (options.length > 1) {
+        return {
+          id: question._id || question.id || String(index + 1),
+          text: question.text,
+          options,
+          correctAnswer: correctAnswer >= 0 ? correctAnswer : 0
+        };
+      }
+
+      return {
+        id: question._id || question.id || String(index + 1),
+        text: question.text,
+        options: ['True', 'False'],
+        correctAnswer: 0
+      };
+    })
+  };
 };
 
 /**
@@ -111,21 +143,21 @@ export const getResults = async () => {
   ];
 };
 
-const extractList = (responseData, key) => {
+function extractList(responseData, key) {
   const scoped = responseData?.data?.[key];
   if (Array.isArray(scoped)) return scoped;
   const direct = responseData?.[key];
   if (Array.isArray(direct)) return direct;
   return [];
-};
+}
 
-const extractItem = (responseData, key) => {
+function extractItem(responseData, key) {
   const scoped = responseData?.data?.[key];
   if (scoped) return scoped;
   const direct = responseData?.[key];
   if (direct) return direct;
   return null;
-};
+}
 
 // Tutor Assignment CRUD
 export const getCourseAssignments = async (courseId) => {
@@ -175,4 +207,88 @@ export const updateCourseQuiz = async (quizId, payload) => {
 
 export const deleteCourseQuiz = async (quizId) => {
   await courseClient.delete(`/assignments/quizzes/${quizId}`);
+};
+
+export const getMyAssignments = async (courseId) => {
+  const response = await courseClient.get('/assignments/student/assignments', {
+    params: courseId ? { courseId } : undefined
+  });
+  return extractList(response.data, 'assignments');
+};
+
+export const submitAssignment = async (assignmentId, payload) => {
+  const formData = new FormData();
+  if (payload?.file) {
+    formData.append('file', payload.file);
+  }
+  if (payload?.submissionText) {
+    formData.append('submissionText', payload.submissionText);
+  }
+
+  const response = await courseClient.post(
+    `/assignments/student/assignments/${assignmentId}/submit`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+
+  return extractItem(response.data, 'submission');
+};
+
+export const getMyAssignmentSubmission = async (assignmentId) => {
+  const response = await courseClient.get(
+    `/assignments/student/assignments/${assignmentId}/submission`
+  );
+  return extractItem(response.data, 'submission');
+};
+
+export const getMyQuizzes = async (courseId) => {
+  const response = await courseClient.get('/assignments/student/quizzes', {
+    params: courseId ? { courseId } : undefined
+  });
+  return extractList(response.data, 'quizzes');
+};
+
+// Tutor submission/attempt viewing
+export const getTutorAssignmentSubmissions = async (assignmentId) => {
+  try {
+    const response = await courseClient.get(`/assignments/tutor/assignments/${assignmentId}/submissions`);
+    return extractList(response.data, 'submissions');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const getTutorCourseSubmissions = async (courseId) => {
+  try {
+    const response = await courseClient.get(`/assignments/tutor/courses/${courseId}/submissions`);
+    return extractList(response.data, 'submissions');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const getTutorQuizAttempts = async (quizId) => {
+  try {
+    const response = await courseClient.get(`/assignments/tutor/quizzes/${quizId}/attempts`);
+    return extractList(response.data, 'attempts');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const getTutorCourseQuizAttempts = async (courseId) => {
+  try {
+    const response = await courseClient.get(`/assignments/tutor/courses/${courseId}/quiz-attempts`);
+    return extractList(response.data, 'attempts');
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };

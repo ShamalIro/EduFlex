@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, HelpCircle, Plus, Pencil, Trash2, CalendarDays, Clock, Award, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, HelpCircle, Plus, Pencil, Trash2, CalendarDays, Clock, Award, Eye, Users, Download } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -17,7 +17,9 @@ import {
   getCourseQuizzes,
   createCourseQuiz,
   updateCourseQuiz,
-  deleteCourseQuiz
+  deleteCourseQuiz,
+  getTutorAssignmentSubmissions,
+  getTutorQuizAttempts
 } from '../../api/assessments';
 
 // Get minimum datetime (now) for date picker
@@ -91,6 +93,14 @@ export function TutorAssessmentsManager() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [editingItem, setEditingItem] = useState(null);
+
+  const [isSubmissionsOpen, setIsSubmissionsOpen] = useState(false);
+  const [submissions, setSubmissions] = useState([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+
+  const [isAttemptsOpen, setIsAttemptsOpen] = useState(false);
+  const [attempts, setAttempts] = useState([]);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
 
   const [assignmentForm, setAssignmentForm] = useState(defaultAssignment);
   const [quizForm, setQuizForm] = useState(defaultQuiz);
@@ -342,6 +352,63 @@ export function TutorAssessmentsManager() {
       }
     } catch (err) {
       alert(err?.response?.data?.message || 'Failed to delete item');
+    }
+  };
+
+  const handleToggleStatus = async (item) => {
+    const id = item.id || item._id;
+    const nextStatus = item.status === 'published' ? 'draft' : 'published';
+
+    try {
+      if (activeTab === 'assignments') {
+        const updated = await updateCourseAssignment(id, { status: nextStatus });
+        setAssignments((prev) =>
+          prev.map((entry) =>
+            (entry.id || entry._id) === (updated.id || updated._id)
+              ? updated
+              : entry
+          )
+        );
+      } else {
+        const updated = await updateCourseQuiz(id, { status: nextStatus });
+        setQuizzes((prev) =>
+          prev.map((entry) =>
+            (entry.id || entry._id) === (updated.id || updated._id)
+              ? updated
+              : entry
+          )
+        );
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to update publish status');
+    }
+  };
+
+  const openSubmissionsModal = async (item) => {
+    setSubmissionsLoading(true);
+    try {
+      const data = await getTutorAssignmentSubmissions(item.id || item._id);
+      setSubmissions(data);
+      setViewingItem(item);
+      setIsSubmissionsOpen(true);
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to load submissions');
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  const openAttemptsModal = async (item) => {
+    setAttemptsLoading(true);
+    try {
+      const data = await getTutorQuizAttempts(item.id || item._id);
+      setAttempts(data);
+      setViewingItem(item);
+      setIsAttemptsOpen(true);
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to load quiz attempts');
+    } finally {
+      setAttemptsLoading(false);
     }
   };
 
@@ -836,6 +903,9 @@ export function TutorAssessmentsManager() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                      <Badge variant={item.status === 'published' ? 'success' : 'secondary'}>
+                        {item.status === 'published' ? 'Published' : 'Draft'}
+                      </Badge>
                       <Badge variant={ownerAllowed ? 'success' : 'secondary'}>
                         {ownerAllowed ? 'Owner' : 'Read Only'}
                       </Badge>
@@ -877,6 +947,37 @@ export function TutorAssessmentsManager() {
                   </div>
 
                   <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleToggleStatus(item)}
+                      disabled={!ownerAllowed}
+                      title={ownerAllowed ? 'Toggle publish status' : 'Only creator can publish'}
+                    >
+                      {item.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </Button>
+                    {activeTab === 'assignments' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openSubmissionsModal(item)}
+                        title="View student submissions"
+                      >
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        Submissions
+                      </Button>
+                    )}
+                    {activeTab === 'quizzes' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openAttemptsModal(item)}
+                        title="View student quiz attempts"
+                      >
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        Attempts
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -1007,6 +1108,137 @@ export function TutorAssessmentsManager() {
               Edit
             </Button>
           )}
+        </div>
+      </Modal>
+
+      {/* Submissions Modal */}
+      <Modal
+        isOpen={isSubmissionsOpen}
+        onClose={() => {
+          setIsSubmissionsOpen(false);
+          setSubmissions([]);
+          setViewingItem(null);
+        }}
+        title={`Submissions for "${viewingItem?.title}"`}
+        size="xl"
+      >
+        {submissionsLoading ? (
+          <div className="text-center p-8">Loading submissions...</div>
+        ) : submissions.length === 0 ? (
+          <div className="text-center p-8 text-slate-500">
+            <p>No submissions yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {submissions.map((submission) => (
+              <Card key={submission._id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-slate-900">{submission.student_name}</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                    </p>
+                    {submission.submissionText && (
+                      <p className="text-sm text-slate-600 mt-2 line-clamp-2">{submission.submissionText}</p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-2">File: {submission.fileName}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Badge variant={submission.status === 'graded' ? 'success' : 'secondary'}>
+                      {submission.status === 'graded' ? `Graded: ${submission.grade}` : 'Submitted'}
+                    </Badge>
+                    {submission.fileUrl && (
+                      <a
+                        href={submission.fileUrl}
+                        download={submission.fileName}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-200">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setIsSubmissionsOpen(false);
+              setSubmissions([]);
+              setViewingItem(null);
+            }}
+          >
+            Close
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Quiz Attempts Modal */}
+      <Modal
+        isOpen={isAttemptsOpen}
+        onClose={() => {
+          setIsAttemptsOpen(false);
+          setAttempts([]);
+          setViewingItem(null);
+        }}
+        title={`Quiz Attempts for "${viewingItem?.title}"`}
+        size="xl"
+      >
+        {attemptsLoading ? (
+          <div className="text-center p-8">Loading quiz attempts...</div>
+        ) : attempts.length === 0 ? (
+          <div className="text-center p-8 text-slate-500">
+            <p>No quiz attempts yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {attempts.map((attempt) => (
+              <Card key={attempt._id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-slate-900">{attempt.student_name}</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Submitted: {new Date(attempt.submittedAt).toLocaleString()}
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-2">
+                      <span className="text-sm">
+                        Score: <strong className="text-indigo-600">{attempt.score}</strong> / {attempt.totalPoints}
+                      </span>
+                      <span className="text-sm">
+                        Percentage: <strong className="text-indigo-600">{Math.round(attempt.percentage)}%</strong>
+                      </span>
+                      <span className="text-sm text-slate-500">
+                        Time spent: {Math.round(attempt.timeSpent / 60)} min
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant={attempt.percentage >= 70 ? 'success' : attempt.percentage >= 50 ? 'info' : 'error'}>
+                    {attempt.percentage >= 70 ? 'Pass' : attempt.percentage >= 50 ? 'Fair' : 'Fail'}
+                  </Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-200">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setIsAttemptsOpen(false);
+              setAttempts([]);
+              setViewingItem(null);
+            }}
+          >
+            Close
+          </Button>
         </div>
       </Modal>
     </div>

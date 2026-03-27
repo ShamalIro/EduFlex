@@ -19,7 +19,11 @@ export function QuizPage() {
   useEffect(() => {
     const fetchQuiz = async () => {
       if (id) {
-        const data = await getQuizByCourse('1'); // Mock using course ID 1
+        const data = await getQuizByCourse(id);
+        if (!data) {
+          setQuiz(null);
+          return;
+        }
         setQuiz(data);
         setAnswers(new Array(data.questions.length).fill(-1));
         setTimeLeft(data.timeLimit * 60);
@@ -60,7 +64,13 @@ export function QuizPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!quiz) return <div className="p-8 text-center">Loading quiz...</div>;
+  if (!quiz) {
+    return (
+      <div className="p-8 text-center">
+        No published quizzes found for this enrolled course yet.
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto py-8">
