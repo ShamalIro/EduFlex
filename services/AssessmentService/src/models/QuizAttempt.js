@@ -6,6 +6,7 @@ const quizAttemptSchema = new mongoose.Schema(
     course_id: { type: String, required: true, index: true },
     student_id: { type: String, required: true, index: true },
     student_name: { type: String, default: 'Student' },
+    quiz_title: { type: String, default: 'Quiz' },
     answers: {
       type: Array,
       default: []

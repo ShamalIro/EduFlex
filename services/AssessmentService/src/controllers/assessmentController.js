@@ -1,6 +1,7 @@
 const Assignment = require('../models/Assignment');
 const Quiz = require('../models/Quiz');
 const AssignmentSubmission = require('../models/AssignmentSubmission');
+const QuizAttempt = require('../models/QuizAttempt');
 
 const ENROLLMENT_SERVICE_URL = (process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004').replace(/\/$/, '');
 
@@ -20,6 +21,80 @@ const getUserName = (user = {}) => {
   if (full) return full;
   if (user.email && typeof user.email === 'string') return user.email;
   return 'Student';
+};
+
+const getQuestionBasePoints = (question = {}) => {
+  const points = Number(question.points);
+  if (Number.isFinite(points) && points > 0) {
+    return points;
+  }
+  return 1;
+};
+
+const getQuizScoringMeta = (quiz) => {
+  const totalQuestionPoints = (quiz.questions || []).reduce(
+    (sum, question) => sum + getQuestionBasePoints(question),
+    0
+  );
+  const totalPoints = Number(quiz.totalPoints) > 0 ? Number(quiz.totalPoints) : totalQuestionPoints || 1;
+  const scale = totalQuestionPoints > 0 ? totalPoints / totalQuestionPoints : 1;
+  return { totalPoints, totalQuestionPoints, scale };
+};
+
+const answersAreEqual = (a, b, caseSensitive = false) => {
+  if (caseSensitive) {
+    return String(a).trim() === String(b).trim();
+  }
+  return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+};
+
+const isAnswerCorrect = (question = {}, answer) => {
+  if (answer === undefined || answer === null) return false;
+
+  switch (question.type) {
+    case 'multiple_choice':
+    case 'true_false': {
+      const selectedIndex = Number(answer);
+      if (!Number.isInteger(selectedIndex)) return false;
+      const options = question.options || [];
+      const correctIndex = options.findIndex((option) => option.isCorrect);
+      return correctIndex >= 0 && selectedIndex === correctIndex;
+    }
+    case 'short_answer': {
+      if (typeof answer !== 'string') return false;
+      if (!question.referenceAnswer) return false;
+      return answersAreEqual(answer, question.referenceAnswer, question.caseSensitive);
+    }
+    case 'fill_in_blank': {
+      if (!Array.isArray(question.blanks) || !question.blanks.length) return false;
+      const values = Array.isArray(answer) ? answer : [answer];
+      if (values.length !== question.blanks.length) return false;
+      return question.blanks.every((blank, index) => {
+        const allowed = Array.isArray(blank.correctAnswers) ? blank.correctAnswers : [];
+        if (!allowed.length) return false;
+        const studentValue = values[index];
+        if (studentValue === undefined || studentValue === null) return false;
+        return allowed.some((candidate) => answersAreEqual(studentValue, candidate, question.caseSensitive));
+      });
+    }
+    default:
+      return false;
+  }
+};
+
+const calculateQuizScore = (quiz, answers) => {
+  const { totalPoints, scale } = getQuizScoringMeta(quiz);
+  let earned = 0;
+
+  (quiz.questions || []).forEach((question, index) => {
+    if (isAnswerCorrect(question, answers[index])) {
+      earned += getQuestionBasePoints(question) * scale;
+    }
+  });
+
+  const roundedScore = Math.max(0, Math.min(totalPoints, Number(earned.toFixed(2))));
+  const percentage = totalPoints > 0 ? Number(((roundedScore / totalPoints) * 100).toFixed(2)) : 0;
+  return { score: roundedScore, totalPoints, percentage };
 };
 
 const requireStudentRole = (req, res) => {
@@ -649,6 +724,120 @@ const getStudentCourseQuizzes = async (req, res) => {
   }
 };
 
+const submitStudentQuiz = async (req, res) => {
+  try {
+    if (!requireStudentRole(req, res)) return;
+
+    const { quizId } = req.params;
+    const quiz = await Quiz.findById(quizId);
+
+    if (!quiz || quiz.status !== 'published') {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    const enrolled = await isStudentEnrolled(req, quiz.course_id);
+    if (!enrolled) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not enrolled in this course'
+      });
+    }
+
+    const studentId = getUserId(req.user);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing student id'
+      });
+    }
+
+    const answers = Array.isArray(req.body.answers) ? req.body.answers : [];
+    if ((quiz.questions || []).length && answers.length !== quiz.questions.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Answers must be provided for every question'
+      });
+    }
+
+    const normalizedAnswers = (quiz.questions || []).map((_, index) => answers[index]);
+    const { score, totalPoints, percentage } = calculateQuizScore(quiz, normalizedAnswers);
+
+    const timeSpent = Number(req.body.timeSpent);
+    const startedAt = req.body.startedAt ? new Date(req.body.startedAt) : new Date();
+
+    const attempt = await QuizAttempt.create({
+      quiz_id: String(quiz._id),
+      course_id: String(quiz.course_id),
+      quiz_title: quiz.title,
+      student_id: studentId,
+      student_name: getUserName(req.user),
+      answers: normalizedAnswers,
+      score,
+      totalPoints,
+      percentage,
+      timeSpent: Number.isFinite(timeSpent) && timeSpent >= 0 ? timeSpent : 0,
+      startedAt: Number.isNaN(startedAt.getTime()) ? new Date() : startedAt,
+      submittedAt: new Date(),
+      status: 'submitted'
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Quiz submitted successfully',
+      data: { attempt }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to submit quiz',
+      error: error.message
+    });
+  }
+};
+
+const getStudentQuizAttempts = async (req, res) => {
+  try {
+    if (!requireStudentRole(req, res)) return;
+
+    const studentId = getUserId(req.user);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing student id'
+      });
+    }
+
+    const filter = {
+      student_id: studentId,
+      status: 'submitted'
+    };
+
+    if (req.query.courseId) {
+      filter.course_id = String(req.query.courseId);
+    }
+
+    if (req.query.quizId) {
+      filter.quiz_id = String(req.query.quizId);
+    }
+
+    const attempts = await QuizAttempt.find(filter).sort({ submittedAt: -1 });
+
+    return res.json({
+      success: true,
+      data: { attempts }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch quiz attempts',
+      error: error.message
+    });
+  }
+};
+
 const submitStudentAssignment = async (req, res) => {
   try {
     if (!requireStudentRole(req, res)) return;
@@ -887,7 +1076,6 @@ const getTutorQuizAttempts = async (req, res) => {
       });
     }
 
-    const QuizAttempt = require('../models/QuizAttempt');
     const attempts = await QuizAttempt.find({
       quiz_id: String(quizId),
       status: 'submitted'
@@ -934,7 +1122,6 @@ const getTutorCourseQuizAttempts = async (req, res) => {
     }
 
     const quizIds = tutorOwned.map(q => String(q._id));
-    const QuizAttempt = require('../models/QuizAttempt');
     const attempts = await QuizAttempt.find({
       quiz_id: { $in: quizIds },
       status: 'submitted'
@@ -966,6 +1153,8 @@ module.exports = {
   getStudentCourseAssignments,
   getStudentQuizzes,
   getStudentCourseQuizzes,
+  submitStudentQuiz,
+  getStudentQuizAttempts,
   submitStudentAssignment,
   getStudentAssignmentSubmission,
   getTutorAssignmentSubmissions,

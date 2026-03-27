@@ -15,6 +15,8 @@ const {
   getStudentCourseAssignments,
   getStudentQuizzes,
   getStudentCourseQuizzes,
+  submitStudentQuiz,
+  getStudentQuizAttempts,
   submitStudentAssignment,
   getStudentAssignmentSubmission,
   getTutorAssignmentSubmissions,
@@ -82,6 +84,8 @@ router.get('/student/courses/:courseId/assignments', authMiddleware, getStudentC
 router.get('/student/courses/:courseId/quizzes', authMiddleware, getStudentCourseQuizzes);
 router.get('/student/assignments/:assignmentId/submission', authMiddleware, getStudentAssignmentSubmission);
 router.post('/student/assignments/:assignmentId/submit', authMiddleware, uploadSubmission.single('file'), submitStudentAssignment);
+router.post('/student/quizzes/:quizId/submit', authMiddleware, submitStudentQuiz);
+router.get('/student/quiz-attempts', authMiddleware, getStudentQuizAttempts);
 
 // Tutor submission/attempt viewing routes
 router.get('/tutor/assignments/:assignmentId/submissions', authMiddleware, isTutor, getTutorAssignmentSubmissions);
