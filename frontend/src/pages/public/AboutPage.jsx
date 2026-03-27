@@ -280,12 +280,10 @@ export function AboutPage() {
             EduFlex.
           </p>
           <Link to="/register">
-            <Button
-              size="lg"
-              className="bg-white text-indigo-600 hover:bg-indigo-50 border-none h-14 px-8 text-base font-bold">
-
+            <button
+              className="bg-white text-indigo-600 h-14 px-8 text-base font-bold rounded-xl border-none cursor-pointer">
               Get Started Free
-            </Button>
+            </button>
           </Link>
         </div>
       </section>

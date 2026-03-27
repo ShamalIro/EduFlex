@@ -7,7 +7,8 @@ const {
   getMyCourses,
   updateCourse,
   deleteCourse,
-  togglePublish
+  togglePublish,
+  getAdminStats
 } = require('../controllers/courseController');
 const { authMiddleware, isTutor } = require('../middleware/authMiddleware');
 
@@ -20,6 +21,7 @@ router.get('/', getAllCourses);
 // Protected routes (specific before dynamic!)
 router.post('/', authMiddleware, isTutor, createCourse);
 router.get('/tutor/my-courses', authMiddleware, isTutor, getMyCourses);
+router.get('/admin/stats', getAdminStats);
 
 // Dynamic routes (always last!)
 router.get('/:id', getCourseById);
