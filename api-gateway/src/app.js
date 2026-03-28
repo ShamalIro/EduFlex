@@ -17,6 +17,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('dev'));
+// Do not parse bodies in the gateway; proxied services need the raw request stream.
 
 
 // Health check
@@ -61,6 +62,20 @@ app.use('/api/assignments', createProxyMiddleware({
     error: (err, req, res) => {
       console.error('Assignment service proxy error:', err);
       res.status(503).json({ error: 'Assignment service unavailable' });
+    }
+  }
+}));
+
+app.use('/api/enrollments', createProxyMiddleware({
+  target: process.env.ENROLLMENT_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/enrollments': ''
+  },
+  on: {
+    error: (err, req, res) => {
+      console.error('Enrollment service proxy error:', err);
+      res.status(503).json({ error: 'Enrollment service unavailable' });
     }
   }
 }));

@@ -4,13 +4,27 @@ import { Plus, Edit2, Trash2, ClipboardList } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { getMyCourses, deleteCourse, togglePublishCourse } from '../../api/courses';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { getMyCourses, createCourse, deleteCourse, togglePublishCourse } from '../../api/courses';
 
 export function TutorCourseManager() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [newCourse, setNewCourse] = useState({
+    title: '',
+    description: '',
+    category: 'Programming',
+    level: 'Beginner',
+    duration: '',
+    price: '0',
+    thumbnail: ''
+  });
 
   useEffect(() => {
     fetchCourses();
@@ -19,6 +33,7 @@ export function TutorCourseManager() {
   const fetchCourses = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await getMyCourses();
       setCourses(data);
     } catch (err) {
@@ -26,6 +41,62 @@ export function TutorCourseManager() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateFieldChange = (field, value) => {
+    setNewCourse((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const resetCreateForm = () => {
+    setNewCourse({
+      title: '',
+      description: '',
+      category: 'Programming',
+      level: 'Beginner',
+      duration: '',
+      price: '0',
+      thumbnail: ''
+    });
+    setCreateError('');
+  };
+
+  const handleCreateCourse = async (e) => {
+    e.preventDefault();
+
+    if (!newCourse.title.trim() || !newCourse.description.trim() || !newCourse.duration.trim()) {
+      setCreateError('Title, description, and duration are required.');
+      return;
+    }
+
+    const parsedPrice = Number(newCourse.price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      setCreateError('Price must be a valid positive number.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setCreateError('');
+
+      const payload = {
+        title: newCourse.title.trim(),
+        description: newCourse.description.trim(),
+        category: newCourse.category,
+        level: newCourse.level,
+        duration: newCourse.duration.trim(),
+        price: parsedPrice,
+        thumbnail: newCourse.thumbnail.trim() || null
+      };
+
+      const created = await createCourse(payload);
+      setCourses((prev) => [created, ...prev]);
+      setIsCreateModalOpen(false);
+      resetCreateForm();
+    } catch (err) {
+      setCreateError(err?.response?.data?.message || 'Failed to create course. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -145,6 +216,115 @@ export function TutorCourseManager() {
           ))}
         </div>
       )}
+
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (!submitting) {
+            setIsCreateModalOpen(false);
+            resetCreateForm();
+          }
+        }}
+        title="Create New Course"
+      >
+        <form onSubmit={handleCreateCourse} className="space-y-4">
+          <Input
+            label="Title"
+            value={newCourse.title}
+            onChange={(e) => handleCreateFieldChange('title', e.target.value)}
+            placeholder="e.g. React for Beginners"
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <textarea
+              value={newCourse.description}
+              onChange={(e) => handleCreateFieldChange('description', e.target.value)}
+              placeholder="Write a short course description"
+              className="block w-full rounded-lg border border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+              rows={4}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <select
+                value={newCourse.category}
+                onChange={(e) => handleCreateFieldChange('category', e.target.value)}
+                className="block w-full rounded-lg border border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+              >
+                <option value="Programming">Programming</option>
+                <option value="Design">Design</option>
+                <option value="Business">Business</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Marketing">Marketing</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Level</label>
+              <select
+                value={newCourse.level}
+                onChange={(e) => handleCreateFieldChange('level', e.target.value)}
+                className="block w-full rounded-lg border border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+              >
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Duration"
+              value={newCourse.duration}
+              onChange={(e) => handleCreateFieldChange('duration', e.target.value)}
+              placeholder="e.g. 8 weeks"
+              required
+            />
+            <Input
+              label="Price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={newCourse.price}
+              onChange={(e) => handleCreateFieldChange('price', e.target.value)}
+            />
+          </div>
+
+          <Input
+            label="Thumbnail URL (optional)"
+            value={newCourse.thumbnail}
+            onChange={(e) => handleCreateFieldChange('thumbnail', e.target.value)}
+            placeholder="https://example.com/image.jpg"
+          />
+
+          {createError ? (
+            <p className="text-sm text-rose-600">{createError}</p>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                resetCreateForm();
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={submitting}>
+              Create Course
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

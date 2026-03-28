@@ -40,7 +40,7 @@ export function TutorDashboard() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-900">Tutor Dashboard</h1>
-        <Button onClick={() => window.location.href = '/tutor/courses'}>
+        <Button onClick={() => window.location.href = '/tutor/create-course'}>
           Create New Course
         </Button>
       </div>

@@ -2,7 +2,15 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function Modal({ isOpen, onClose, title, children }) {
+const SIZES = {
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-6xl'
+};
+
+export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
@@ -35,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children }) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-xl shadow-xl w-full max-w-lg pointer-events-auto flex flex-col max-h-[90vh]"
+              className={`bg-white rounded-xl shadow-xl w-full ${SIZES[size]} pointer-events-auto flex flex-col max-h-[90vh]`}
             >
               <div className="flex items-center justify-between p-6 border-b border-slate-100">
                 <h2 className="text-xl font-semibold text-slate-900">

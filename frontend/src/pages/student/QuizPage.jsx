@@ -15,14 +15,22 @@ export function QuizPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [quizStartedAt, setQuizStartedAt] = useState(null);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     const fetchQuiz = async () => {
       if (id) {
-        const data = await getQuizByCourse('1'); // Mock using course ID 1
+        const data = await getQuizByCourse(id);
+        if (!data) {
+          setQuiz(null);
+          setQuizStartedAt(null);
+          return;
+        }
         setQuiz(data);
         setAnswers(new Array(data.questions.length).fill(-1));
         setTimeLeft(data.timeLimit * 60);
+        setQuizStartedAt(new Date().toISOString());
       }
     };
     fetchQuiz();
@@ -44,11 +52,20 @@ export function QuizPage() {
   const handleSubmit = async () => {
     if (!quiz) return;
     setIsSubmitting(true);
+    setSubmitError('');
     try {
-      await submitQuiz(quiz.id, answers);
+      const timeSpent = quiz.timeLimit ? quiz.timeLimit * 60 - timeLeft : 0;
+      await submitQuiz(quiz.id, {
+        answers,
+        timeSpent: Math.max(0, timeSpent),
+        startedAt: quizStartedAt
+      });
       navigate('/student/results');
     } catch (error) {
       console.error(error);
+      setSubmitError(
+        error?.response?.data?.message || 'Failed to submit quiz. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -60,7 +77,13 @@ export function QuizPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!quiz) return <div className="p-8 text-center">Loading quiz...</div>;
+  if (!quiz) {
+    return (
+      <div className="p-8 text-center">
+        No published quizzes found for this enrolled course yet.
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto py-8">
@@ -139,6 +162,9 @@ export function QuizPage() {
             {quiz.questions.length} questions. Are you sure you want to submit?
             You cannot change your answers after submission.
           </p>
+          {submitError ? (
+            <p className="text-sm text-rose-600 mb-4">{submitError}</p>
+          ) : null}
           <div className="flex justify-center gap-3">
             <Button variant="secondary" onClick={() => setShowConfirm(false)}>
               Keep Reviewing
