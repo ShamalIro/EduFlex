@@ -57,7 +57,10 @@
  * @property {string} studentId
  * @property {number} score
  * @property {number} totalPoints
- * @property {string} completedAt
+ * @property {number} [percentage]
+ * @property {string} [quiz_title]
+ * @property {string} [submittedAt]
+ * @property {string} [completedAt]
  * @property {number[]} answers
  */
 

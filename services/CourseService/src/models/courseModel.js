@@ -33,7 +33,7 @@ const courseSchema = new mongoose.Schema({
     default: 0
   },
   tutor_id: {
-    type: Number,
+    type: String,
     required: true
   },
   tutor_name: {

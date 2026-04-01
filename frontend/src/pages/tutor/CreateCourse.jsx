@@ -321,7 +321,7 @@ export function CreateCourse() {
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-3 text-sm font-medium text-slate-500">
-                        usd
+                        USD
                       </span>
                       <input
                         type="number"
@@ -330,7 +330,7 @@ export function CreateCourse() {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         placeholder="50"
-                        min="0" 
+                        min="0"
                         step="0.01"
                         className={`w-full pl-14 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                           touched.price && errors.price ? 'border-red-500' : 'border-slate-300'

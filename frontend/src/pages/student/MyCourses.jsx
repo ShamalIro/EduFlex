@@ -3,6 +3,7 @@ import { BookOpen, Clock, ArrowRight, ClipboardList } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { getEnrolledCourses } from '../../api/courses';
 
 export function MyCourses() {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
@@ -10,13 +11,18 @@ export function MyCourses() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // TODO: Replace with real API call when CourseService is ready
-    // const data = await getEnrolledCourses();
-    // setEnrolledCourses(data);
-    setTimeout(() => {
-      setEnrolledCourses([]);
-      setIsLoading(false);
-    }, 500);
+    const fetchData = async () => {
+      try {
+        const data = await getEnrolledCourses();
+        setEnrolledCourses(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   if (isLoading) {
@@ -55,7 +61,7 @@ export function MyCourses() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {enrolledCourses.map((course) => (
-            <Card key={course.id} className="overflow-hidden">
+            <Card key={course.id || course._id} className="overflow-hidden">
               <img
                 src={course.thumbnail}
                 alt={course.title}
@@ -85,13 +91,13 @@ export function MyCourses() {
                   <Button
                     size="sm"
                     className="flex-1"
-                    onClick={() => navigate(`/student/courses/${course.id}`)}>
+                    onClick={() => navigate(`/student/courses/${course.id || course._id}`)}>
                     Continue <ArrowRight className="h-3 w-3 ml-1" />
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => navigate(`/student/assignments?course=${course.id}`)}>
+                    onClick={() => navigate(`/student/assignments?course=${course.id || course._id}`)}>
                     <ClipboardList className="h-4 w-4" />
                   </Button>
                 </div>
