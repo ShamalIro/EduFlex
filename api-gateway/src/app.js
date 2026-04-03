@@ -80,6 +80,18 @@ app.use('/api/enrollments', createProxyMiddleware({
   }
 }));
 
+app.use('/api/payments', createProxyMiddleware({
+  target: process.env.PAYMENT_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/payments': '/api/payments' },
+  on: {
+    error: (err, req, res) => {
+      console.error('Payment service proxy error:', err);
+      res.status(503).json({ error: 'Payment service unavailable' });
+    }
+  }
+}));
+
 app.use('/api/grades', createProxyMiddleware({
   target: process.env.GRADE_SERVICE_URL,
   changeOrigin: true,
@@ -107,3 +119,5 @@ app.listen(PORT, () => {
   console.log(`🚀 API Gateway running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
 });
+
+
