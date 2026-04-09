@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { createPaymentIntent, confirmPayment } from '../../api/payment';
+import { createPaymentIntent, confirmPayment, sendOTP, verifyOTP } from '../../api/payment';
 import client from '../../api/client';
+import { useAuth } from '../../hooks/useAuth';
 
 const PaymentPage = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { courseTitle, amount, thumbnail } = location.state || {};
 
   const [cardName, setCardName] = useState('');
@@ -21,6 +23,11 @@ const PaymentPage = () => {
   const [showPaypalModal, setShowPaypalModal] = useState(false);
   const [paypalEmail, setPaypalEmail] = useState('');
   const [showLearnMore, setShowLearnMore] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
   const formatCardNumber = (value) => {
     const v = value.replace(/\D/g, '').substring(0, 16);
@@ -70,13 +77,48 @@ const PaymentPage = () => {
     return newErrors;
   };
 
-  const handlePay = async () => {
+  // ✅ Step 1 - Validate then send OTP
+  const handlePayNow = async () => {
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
     setErrors({});
+    try {
+      setLoading(true);
+      const email = user?.email;
+      await sendOTP(email, courseTitle, amount);
+      setOtpSent(true);
+      setShowOtpModal(true);
+    } catch (err) {
+      setErrors({ submit: 'Failed to send OTP. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Step 2 - Verify OTP then process payment
+  const handleVerifyOTP = async () => {
+    if (!otpValue || otpValue.length < 6) {
+      setOtpError('Please enter the 6-digit OTP.');
+      return;
+    }
+    setOtpError('');
+    try {
+      setOtpLoading(true);
+      await verifyOTP(otpValue);
+      setShowOtpModal(false);
+      await handlePay();
+    } catch (err) {
+      setOtpError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // ✅ Step 3 - Process payment after OTP verified
+  const handlePay = async () => {
     try {
       setLoading(true);
       const data = await createPaymentIntent(courseId, courseTitle, amount);
@@ -125,6 +167,80 @@ const PaymentPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
+      {/* ✅ OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Verify Your Email</h2>
+              <p className="text-gray-500 text-sm">
+                We sent a 6-digit OTP to
+              </p>
+              <p className="text-blue-600 font-semibold text-sm">{user?.email}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                Enter OTP
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                placeholder="000000"
+                value={otpValue}
+                onChange={(e) => {
+                  setOtpValue(e.target.value.replace(/\D/g, ''));
+                  setOtpError('');
+                }}
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-center text-2xl font-bold tracking-widest focus:outline-none focus:border-blue-500"
+              />
+              {otpError && (
+                <p className="text-red-500 text-xs mt-1 text-center">{otpError}</p>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400 text-center mb-5">
+              OTP expires in <strong>10 minutes</strong>. Check your spam folder if not received.
+            </p>
+
+            <button
+              onClick={handleVerifyOTP}
+              disabled={otpLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 mb-3"
+            >
+              {otpLoading ? 'Verifying...' : 'Verify & Pay'}
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  await sendOTP(user?.email, courseTitle, amount);
+                  setOtpValue('');
+                  setOtpError('Resent! Check your email.');
+                } catch {
+                  setOtpError('Failed to resend. Try again.');
+                }
+              }}
+              className="w-full text-blue-600 text-sm hover:underline"
+            >
+              Resend OTP
+            </button>
+
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-light"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ✅ PayPal Login Modal */}
       {showPaypalModal && (
@@ -220,7 +336,7 @@ const PaymentPage = () => {
 
             <h2 className="text-lg font-semibold text-gray-800 mb-3">Payment methods</h2>
 
-            {/* ✅ Card Option */}
+            {/* Card Option */}
             <div className={`border rounded-xl mb-3 cursor-pointer transition ${
               selectedMethod === 'card' ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'
             }`}>
@@ -316,7 +432,7 @@ const PaymentPage = () => {
               </div>
             </div>
 
-            {/* ✅ Google Pay */}
+            {/* Google Pay */}
             <div className={`border rounded-xl mb-3 cursor-pointer transition ${
               selectedMethod === 'googlepay' ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'
             }`}
@@ -336,7 +452,7 @@ const PaymentPage = () => {
               {selectedMethod === 'googlepay' && <AnotherStepMessage />}
             </div>
 
-            {/* ✅ PayPal */}
+            {/* PayPal */}
             <div className={`border rounded-xl mb-4 cursor-pointer transition ${
               selectedMethod === 'paypal' ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'
             }`}
@@ -370,7 +486,7 @@ const PaymentPage = () => {
               )}
             </div>
 
-            {/* ✅ Save card checkbox with Learn more */}
+            {/* Save card checkbox */}
             <div className="mb-4">
               <div className="flex items-center gap-2">
                 <input
@@ -391,7 +507,6 @@ const PaymentPage = () => {
                 </label>
               </div>
 
-              {/* ✅ Learn more details */}
               {showLearnMore && (
                 <div className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 leading-relaxed">
                   <p className="font-semibold text-gray-800 mb-2">About saving your card</p>
@@ -437,13 +552,14 @@ const PaymentPage = () => {
               </div>
             )}
 
+            {/* ✅ Pay Now button — sends OTP first */}
             {selectedMethod !== 'paypal' && (
               <button
-                onClick={handlePay}
+                onClick={handlePayNow}
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60"
               >
-                {loading ? 'Processing...' : 'Pay Now'}
+                {loading ? 'Sending OTP...' : 'Pay Now'}
               </button>
             )}
 
