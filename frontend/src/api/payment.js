@@ -26,3 +26,20 @@ export const getPaymentStatus = async (courseId) => {
   const response = await client.get(`/payments/course/${courseId}/status`);
   return response.data;
 };
+
+// ✅ OTP functions
+export const sendOTP = async (email, courseTitle, amount) => {
+  const response = await client.post('/otp/send', {
+    email,
+    courseTitle,
+    amount
+  });
+  return response.data;
+};
+
+export const verifyOTP = async (otp) => {
+  const response = await client.post('/otp/verify', {
+    otp
+  });
+  return response.data;
+};
