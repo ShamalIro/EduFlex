@@ -124,6 +124,8 @@ services:
       - ASSIGNMENT_SERVICE_URL=http://assessment-service:4003
       - ENROLLMENT_SERVICE_URL=http://enrollment-service:4004
       - GRADE_SERVICE_URL=http://enrollment-service:4004
+      - PAYMENT_SERVICE_URL=http://payment-service:4005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4006
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "3000:3000"
