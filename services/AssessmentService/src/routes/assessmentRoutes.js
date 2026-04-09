@@ -1,6 +1,4 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 const {
   getCourseAssignments,
@@ -19,6 +17,8 @@ const {
   getStudentQuizAttempts,
   submitStudentAssignment,
   getStudentAssignmentSubmission,
+  getStudentAssignmentSubmissions,
+  downloadSubmissionFile,
   getTutorAssignmentSubmissions,
   getTutorCourseSubmissions,
   getTutorQuizAttempts,
@@ -27,19 +27,6 @@ const {
 const { authMiddleware, isTutor } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-
-const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'submissions');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `${Date.now()}-${safeName}`);
-  }
-});
 
 const allowedMimeTypes = new Set([
   'application/pdf',
@@ -54,8 +41,8 @@ const allowedMimeTypes = new Set([
 ]);
 
 const uploadSubmission = multer({
-  storage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (allowedMimeTypes.has(file.mimetype)) {
       return cb(null, true);
@@ -83,7 +70,9 @@ router.get('/student/quizzes', authMiddleware, getStudentQuizzes);
 router.get('/student/courses/:courseId/assignments', authMiddleware, getStudentCourseAssignments);
 router.get('/student/courses/:courseId/quizzes', authMiddleware, getStudentCourseQuizzes);
 router.get('/student/assignments/:assignmentId/submission', authMiddleware, getStudentAssignmentSubmission);
+router.get('/student/assignment-submissions', authMiddleware, getStudentAssignmentSubmissions);
 router.post('/student/assignments/:assignmentId/submit', authMiddleware, uploadSubmission.single('file'), submitStudentAssignment);
+router.get('/submissions/:submissionId/file', authMiddleware, downloadSubmissionFile);
 router.post('/student/quizzes/:quizId/submit', authMiddleware, submitStudentQuiz);
 router.get('/student/quiz-attempts', authMiddleware, getStudentQuizAttempts);
 

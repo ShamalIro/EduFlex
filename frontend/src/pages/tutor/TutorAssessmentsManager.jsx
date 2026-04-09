@@ -19,6 +19,7 @@ import {
   updateCourseQuiz,
   deleteCourseQuiz,
   getTutorAssignmentSubmissions,
+  downloadAssignmentSubmissionFile,
   getTutorQuizAttempts
 } from '../../api/assessments';
 
@@ -409,6 +410,14 @@ export function TutorAssessmentsManager() {
       alert(err?.response?.data?.message || 'Failed to load quiz attempts');
     } finally {
       setAttemptsLoading(false);
+    }
+  };
+
+  const handleSubmissionDownload = async (submission) => {
+    try {
+      await downloadAssignmentSubmissionFile(submission._id, submission.fileName || 'submission.bin');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to download submission file');
     }
   };
 
@@ -1148,14 +1157,14 @@ export function TutorAssessmentsManager() {
                       {submission.status === 'graded' ? `Graded: ${submission.grade}` : 'Submitted'}
                     </Badge>
                     {submission.fileUrl && (
-                      <a
-                        href={submission.fileUrl}
-                        download={submission.fileName}
+                      <button
+                        type="button"
+                        onClick={() => handleSubmissionDownload(submission)}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded"
                       >
                         <Download className="h-3 w-3" />
                         Download
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>

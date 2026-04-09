@@ -67,6 +67,13 @@ export const getResults = async (filters = {}) => {
   return extractList(response.data, 'attempts');
 };
 
+export const getAssignmentSubmissions = async (filters = {}) => {
+  const response = await courseClient.get('/assignments/student/assignment-submissions', {
+    params: filters.courseId ? { courseId: filters.courseId } : undefined
+  });
+  return extractList(response.data, 'submissions');
+};
+
 function extractList(responseData, key) {
   const scoped = responseData?.data?.[key];
   if (Array.isArray(scoped)) return scoped;
@@ -195,6 +202,21 @@ export const getTutorCourseSubmissions = async (courseId) => {
     if (error?.response?.status === 404) return [];
     throw error;
   }
+};
+
+export const downloadAssignmentSubmissionFile = async (submissionId, fileName = 'submission.bin') => {
+  const response = await courseClient.get(`/assignments/submissions/${submissionId}/file`, {
+    responseType: 'blob'
+  });
+
+  const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.setAttribute('download', fileName);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 };
 
 export const getTutorQuizAttempts = async (quizId) => {
