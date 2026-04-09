@@ -87,15 +87,18 @@ export function CourseCatalog() {
               />
               {/* ✅ Add to Cart button */}
               <button
-                onClick={() => addToCart && addToCart(course)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addToCart && addToCart(course);
+                }}
                 disabled={!!cart.find(c => c._id === course._id)}
-                className={`absolute bottom-16 right-3 text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-full font-medium transition ${
                   cart.find(c => c._id === course._id)
-                    ? 'bg-green-100 text-green-700 cursor-default'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-green-500 text-white cursor-default'
+                    : 'bg-black/50 text-white backdrop-blur-sm hover:bg-blue-600'
                 }`}
               >
-                {cart.find(c => c._id === course._id) ? '✓ In Cart' : '+ Add to Cart'}
+                {cart.find(c => c._id === course._id) ? '✓ Added' : '+ Cart'}
               </button>
             </div>
           ))}
