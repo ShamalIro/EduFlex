@@ -1,4 +1,6 @@
 const Payment = require('../models/paymentModel');
+const { sendPaymentReceiptEmail } = require('../utils/emailHelper');
+const axios = require('axios');
 
 const createPaymentIntent = async (req, res) => {
   try {
@@ -45,6 +47,36 @@ const confirmPayment = async (req, res) => {
 
     if (!payment) {
       return res.status(404).json({ message: 'Payment record not found' });
+    }
+
+    // ✅ Send receipt email
+    try {
+      const userEmail = req.user.email;
+      if (userEmail) {
+        await sendPaymentReceiptEmail(
+          userEmail,
+          payment.course_title,
+          payment.amount,
+          payment._id.toString()
+        );
+        console.log(`✅ Receipt email sent to ${userEmail}`);
+      }
+    } catch (emailError) {
+      console.error('Receipt email error:', emailError.message);
+    }
+
+    // ✅ Create notification
+    try {
+      await axios.post('http://localhost:4006/api/notifications', {
+        user_id: req.user.id.toString(),
+        title: 'Payment Successful! 🎉',
+        message: `You are now enrolled in ${payment.course_title}`,
+        type: 'payment',
+        icon: '💳'
+      });
+      console.log(`✅ Notification created for user ${req.user.id}`);
+    } catch (notifError) {
+      console.error('Notification error:', notifError.message);
     }
 
     res.status(200).json({
