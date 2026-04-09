@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
 const paymentRoutes = require('./routes/paymentRoutes');
+const otpRoutes = require('./routes/otpRoutes');
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/payments', paymentRoutes);
+app.use('/api/otp', otpRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
