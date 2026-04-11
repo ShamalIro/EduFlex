@@ -11,6 +11,7 @@ const assignmentSubmissionSchema = new mongoose.Schema(
     fileName: { type: String, required: true },
     mimeType: { type: String, default: 'application/octet-stream' },
     fileSize: { type: Number, default: 0 },
+    fileData: { type: Buffer, required: true, select: false },
     submittedAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['submitted', 'graded'], default: 'submitted' },
     grade: { type: Number, default: null },
@@ -20,6 +21,20 @@ const assignmentSubmissionSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+assignmentSubmissionSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.fileData;
+    return ret;
+  }
+});
+
+assignmentSubmissionSchema.set('toObject', {
+  transform: (_doc, ret) => {
+    delete ret.fileData;
+    return ret;
+  }
+});
 
 assignmentSubmissionSchema.index(
   { assignment_id: 1, student_id: 1 },
