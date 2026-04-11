@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, GraduationCap, DollarSign } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, DollarSign, Clock } from 'lucide-react';
 import { StatsCard } from '../../components/shared/StatsCard';
 import { Card } from '../../components/ui/Card';
 import { getAdminCourseStats } from '../../api/courses';
+import { getPendingTutors } from '../../api/admin';
 import client from '../../api/client';
 
 export function AdminDashboard() {
   const [totalUsers, setTotalUsers] = useState(0);
+  const [pendingTutors, setPendingTutors] = useState(0);
   const [loading, setLoading] = useState(true);
   const [courseStats, setCourseStats] = useState({ totalCourses: 0, byCategory: [] });
   const [weeklyRegistrations, setWeeklyRegistrations] = useState([0, 0, 0, 0, 0, 0, 0]);
 
-  useEffect(() => { fetchTotalUsers(); }, []);
-
-  useEffect(() => {
-    getAdminCourseStats()
-      .then(data => setCourseStats(data))
-      .catch(err => console.error(err));
+  useEffect(() => { 
+    fetchTotalUsers();
+    fetchPendingTutors();
   }, []);
 
   const fetchTotalUsers = async () => {
@@ -45,6 +44,21 @@ export function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  const fetchPendingTutors = async () => {
+    try {
+      const data = await getPendingTutors();
+      setPendingTutors(data.length);
+    } catch (error) {
+      console.error('Failed to fetch pending tutors:', error);
+    }
+  };
+
+  useEffect(() => {
+    getAdminCourseStats()
+      .then(data => setCourseStats(data))
+      .catch(err => console.error(err));
+  }, []);
 
   const getLast7Days = () => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -75,17 +89,17 @@ export function AdminDashboard() {
       trend: 'up'
     },
     {
+      label: 'Pending Tutors',
+      value: String(pendingTutors),
+      icon: Clock,
+      change: 'Needs review',
+      trend: 'up'
+    },
+    {
       label: 'Active Enrollments',
       value: 'Coming Soon',
       icon: GraduationCap,
       change: 'EnrollmentService pending',
-      trend: 'up'
-    },
-    {
-      label: 'Total Revenue',
-      value: 'Coming Soon',
-      icon: DollarSign,
-      change: 'Revenue tracking pending',
       trend: 'up'
     }
   ];

@@ -38,6 +38,7 @@ import { CreateCourse } from './pages/tutor/CreateCourse';
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserManagement } from './pages/admin/UserManagement';
+import { PendingTutors } from './pages/admin/PendingTutors';
 import AdminCourseManagement from './pages/admin/AdminCourseManagement';
 import AdminCourseDetail from './pages/admin/AdminCourseDetail';
 
@@ -136,6 +137,7 @@ export function App() {
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="pending-tutors" element={<PendingTutors />} />
             <Route path="courses" element={<AdminCourseManagement />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
             <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />

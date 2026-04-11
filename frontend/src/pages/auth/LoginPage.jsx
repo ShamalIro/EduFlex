@@ -35,7 +35,13 @@ export function LoginPage() {
         navigate('/student/dashboard', { replace: true });
       }
     } catch (err) {
-      setError('Invalid email or password');
+      if (err.message.includes('pending admin approval')) {
+        setError('Your tutor account is pending admin approval. Please wait for admin to approve your account.');
+      } else if (err.message.includes('disabled')) {
+        setError('Your account has been disabled. Please contact admin.');
+      } else {
+        setError('Invalid email or password');
+      }
     } finally {
       setIsSubmitting(false);
     }
