@@ -23,6 +23,17 @@ const getUserName = (user = {}) => {
   return 'Student';
 };
 
+const buildSubmissionFileUrl = (submissionId) => `/api/assignments/submissions/${submissionId}/file`;
+
+const toSubmissionResponse = (submission) => {
+  const plain = submission?.toObject ? submission.toObject() : submission;
+  if (!plain) return null;
+  return {
+    ...plain,
+    fileUrl: buildSubmissionFileUrl(plain._id)
+  };
+};
+
 const getQuestionBasePoints = (question = {}) => {
   const points = Number(question.points);
   if (Number.isFinite(points) && points > 0) {
@@ -142,6 +153,57 @@ const getStudentEnrolledCourseIds = async (req) => {
   });
   const payload = await parseJson(response);
   return Array.isArray(payload?.data?.courseIds) ? payload.data.courseIds : [];
+};
+
+const syncEnrollmentProgress = async (req, courseId, studentId) => {
+  if (!courseId || !studentId) return;
+
+  const normalizedCourseId = String(courseId);
+  const normalizedStudentId = String(studentId);
+
+  const [publishedAssignments, publishedQuizzes, submittedAssignmentIds, submittedQuizIds] = await Promise.all([
+    Assignment.countDocuments({
+      course_id: normalizedCourseId,
+      status: 'published'
+    }),
+    Quiz.countDocuments({
+      course_id: normalizedCourseId,
+      status: 'published'
+    }),
+    AssignmentSubmission.distinct('assignment_id', {
+      course_id: normalizedCourseId,
+      student_id: normalizedStudentId
+    }),
+    QuizAttempt.distinct('quiz_id', {
+      course_id: normalizedCourseId,
+      student_id: normalizedStudentId,
+      status: 'submitted'
+    })
+  ]);
+
+  const totalAssessments = publishedAssignments + publishedQuizzes;
+  if (!totalAssessments) return;
+
+  const completedAssessments = submittedAssignmentIds.length + submittedQuizIds.length;
+  const progress = Math.max(0, Math.min(100, Math.round((completedAssessments / totalAssessments) * 100)));
+
+  const enrollmentCheckUrl = `${ENROLLMENT_SERVICE_URL}/internal/check?studentId=${encodeURIComponent(normalizedStudentId)}&courseId=${encodeURIComponent(normalizedCourseId)}`;
+  const enrollmentCheckResponse = await fetch(enrollmentCheckUrl, {
+    method: 'GET'
+  });
+  const enrollmentCheckPayload = await parseJson(enrollmentCheckResponse);
+  const enrollmentId = enrollmentCheckPayload?.data?.enrollment?._id;
+
+  if (!enrollmentId) return;
+
+  await fetch(`${ENROLLMENT_SERVICE_URL}/${enrollmentId}/progress`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: getAuthHeader(req)
+    },
+    body: JSON.stringify({ progress })
+  }).then(parseJson);
 };
 
 const getCourseAssignments = async (req, res) => {
@@ -784,6 +846,12 @@ const submitStudentQuiz = async (req, res) => {
       status: 'submitted'
     });
 
+    try {
+      await syncEnrollmentProgress(req, quiz.course_id, studentId);
+    } catch (progressError) {
+      console.error('Failed to sync progress after quiz submission:', progressError.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Quiz submitted successfully',
@@ -886,10 +954,11 @@ const submitStudentAssignment = async (req, res) => {
         student_id: studentId,
         student_name: getUserName(req.user),
         submissionText: (req.body.submissionText || '').trim(),
-        fileUrl: `/uploads/submissions/${req.file.filename}`,
+        fileUrl: '',
         fileName: req.file.originalname,
         mimeType: req.file.mimetype,
         fileSize: req.file.size,
+        fileData: req.file.buffer,
         submittedAt: new Date(),
         status: 'submitted'
       },
@@ -900,15 +969,65 @@ const submitStudentAssignment = async (req, res) => {
       }
     );
 
+    submission.fileUrl = buildSubmissionFileUrl(submission._id);
+    await submission.save();
+
+    try {
+      await syncEnrollmentProgress(req, assignment.course_id, studentId);
+    } catch (progressError) {
+      console.error('Failed to sync progress after assignment submission:', progressError.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Assignment submitted successfully',
-      data: { submission }
+      data: { submission: toSubmissionResponse(submission) }
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: 'Failed to submit assignment',
+      error: error.message
+    });
+  }
+};
+
+const getStudentAssignmentSubmissions = async (req, res) => {
+  try {
+    if (!requireStudentRole(req, res)) return;
+
+    const studentId = getUserId(req.user);
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing student id'
+      });
+    }
+
+    const { courseId } = req.query;
+    let query = { student_id: studentId };
+
+    if (courseId) {
+      query.course_id = courseId;
+      const enrolled = await isStudentEnrolled(req, courseId);
+      if (!enrolled) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not enrolled in this course'
+        });
+      }
+    }
+
+    const submissions = await AssignmentSubmission.find(query).sort({ submittedAt: -1 });
+
+    return res.json({
+      success: true,
+      data: { submissions: submissions.map(toSubmissionResponse) }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch submissions',
       error: error.message
     });
   }
@@ -951,12 +1070,70 @@ const getStudentAssignmentSubmission = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { submission }
+      data: { submission: toSubmissionResponse(submission) }
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch submission',
+      error: error.message
+    });
+  }
+};
+
+const downloadSubmissionFile = async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const submission = await AssignmentSubmission.findById(submissionId).select('+fileData');
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    const requesterId = getUserId(req.user);
+    if (!requesterId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing user id'
+      });
+    }
+
+    const isStudentOwner = req.user.role === 'student' && String(submission.student_id) === requesterId;
+
+    let canTutorAccess = false;
+    if (req.user.role === 'tutor' || req.user.role === 'admin') {
+      const assignment = await Assignment.findById(submission.assignment_id).select('owner_id');
+      if (assignment && canModify(assignment.owner_id, req.user)) {
+        canTutorAccess = true;
+      }
+    }
+
+    if (!isStudentOwner && !canTutorAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not allowed to access this file'
+      });
+    }
+
+    if (!submission.fileData || !submission.fileData.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission file data not found in database'
+      });
+    }
+
+    const safeName = String(submission.fileName || 'submission.bin').replace(/[\r\n"]/g, '_');
+    res.setHeader('Content-Type', submission.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Length', submission.fileSize || submission.fileData.length);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+    return res.send(submission.fileData);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to download submission file',
       error: error.message
     });
   }
@@ -994,7 +1171,7 @@ const getTutorAssignmentSubmissions = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { submissions }
+      data: { submissions: submissions.map(toSubmissionResponse) }
     });
   } catch (error) {
     return res.status(500).json({
@@ -1039,7 +1216,7 @@ const getTutorCourseSubmissions = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { submissions }
+      data: { submissions: submissions.map(toSubmissionResponse) }
     });
   } catch (error) {
     return res.status(500).json({
@@ -1157,6 +1334,8 @@ module.exports = {
   getStudentQuizAttempts,
   submitStudentAssignment,
   getStudentAssignmentSubmission,
+  getStudentAssignmentSubmissions,
+  downloadSubmissionFile,
   getTutorAssignmentSubmissions,
   getTutorCourseSubmissions,
   getTutorQuizAttempts,
