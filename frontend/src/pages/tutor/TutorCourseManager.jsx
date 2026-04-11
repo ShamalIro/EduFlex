@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Edit2, Trash2, ClipboardList, Eye } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -185,9 +185,23 @@ export function TutorCourseManager() {
                 </div>
 
                 <div className="flex gap-3 mt-6">
-                  <Button variant="secondary" size="sm">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/tutor/courses/${course._id}/add-lesson`)}
+                  >
                     <Edit2 className="h-3.5 w-3.5 mr-2" />
                     Edit Content
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/tutor/courses/${course._id}/lessons`)}
+                    className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-2" />
+                    View
                   </Button>
 
                   {/* Assessment Button - Entry point for AssessmentService */}

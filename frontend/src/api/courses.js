@@ -112,6 +112,22 @@ export const togglePublishCourse = async (id) => {
   return response.data.data.course;
 };
 
+// Add a lesson to a course (tutor)
+export const addLesson = (courseId, formData) =>
+  courseClient.post(`/courses/${courseId}/lessons`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+export const updateLesson = async (courseId, lessonId, data) => {
+  const response = await courseClient.put(`/courses/${courseId}/lessons/${lessonId}`, data);
+  return response.data;
+};
+
+export const deleteLesson = async (courseId, lessonId) => {
+  const response = await courseClient.delete(`/courses/${courseId}/lessons/${lessonId}`);
+  return response.data;
+};
+
 // Get admin course statistics
 export const getAdminCourseStats = async () => {
   const res = await courseClient.get('/courses/admin/stats');

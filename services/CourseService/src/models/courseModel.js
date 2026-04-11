@@ -51,7 +51,17 @@ const courseSchema = new mongoose.Schema({
   rating: {
     type: Number,
     default: 0
-  }
+  },
+  lessons: [
+    {
+      lessonNumber: Number,
+      lessonTitle: String,
+      lessonDescription: String,
+      videoUrl: String,
+      pdfUrl: String,
+      createdAt: { type: Date, default: Date.now }
+    }
+  ]
 }, {
   timestamps: true
 });

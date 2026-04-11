@@ -34,7 +34,9 @@ import { TutorDashboard } from './pages/tutor/TutorDashboard';
 import { TutorCourseManager } from './pages/tutor/TutorCourseManager';
 import { TutorAssessmentsManager } from './pages/tutor/TutorAssessmentsManager';
 import { CreateCourse } from './pages/tutor/CreateCourse';
-
+import AddLesson from './pages/tutor/AddLesson';
+import CourseLessons from './pages/tutor/CourseLessons';
+import EditLesson from './pages/tutor/EditLesson';
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserManagement } from './pages/admin/UserManagement';
@@ -112,6 +114,9 @@ export function App() {
               path="courses/:courseId/assessments" 
               element={<TutorAssessmentsManager />} 
             />
+            <Route path="courses/:id/add-lesson" element={<AddLesson />} />
+            <Route path="courses/:id/lessons" element={<CourseLessons />} />
+            <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
             <Route 
               path="students" 
               element={
