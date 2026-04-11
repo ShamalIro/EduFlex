@@ -157,14 +157,12 @@ export function CourseDetail() {
               </Button>
             ) : (
               <div className="flex gap-3 w-full md:w-auto">
-                {/* ✅ Financial Aid button */}
                 <button
                   onClick={handleFinancialAid}
                   className="px-6 py-2.5 border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition"
                 >
                   Financial Aid
                 </button>
-                {/* ✅ Buy Now button */}
                 <button
                   onClick={handlePayment}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
@@ -220,16 +218,25 @@ export function CourseDetail() {
             )}
 
             {activeTab === 'lessons' && (
-<<<<<<< HEAD
-              <div className="space-y-4">
+              <div className="space-y-4 animate-in fade-in duration-300">
                 {course.lessons && course.lessons.length > 0 ? (
                   course.lessons.map((lesson, index) => (
-                    <div key={index} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-
+                    <div
+                      key={index}
+                      className={`bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow
+                        ${isEnrolled ? 'hover:shadow-md cursor-pointer' : 'opacity-75'}`}
+                      onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
+                    >
                       {/* Lesson Header */}
                       <div className="flex items-center gap-3 mb-3">
                         <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                          {lesson.lessonNumber}
+                          {isEnrolled ? (
+                            lesson.completed
+                              ? <CheckCircle className="h-5 w-5 text-emerald-600" />
+                              : <PlayCircle className="h-5 w-5" />
+                          ) : (
+                            <Lock className="h-4 w-4" />
+                          )}
                         </div>
                         <h4 className="font-semibold text-slate-900 text-base">
                           {lesson.lessonTitle}
@@ -241,71 +248,39 @@ export function CourseDetail() {
                         {lesson.lessonDescription}
                       </p>
 
-                      {/* Links */}
-                      <div className="flex gap-3 pl-12">
-                        {lesson.videoUrl && (
-                          <a
-                            href={lesson.videoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                          >
-                            🎥 Watch Video
-                          </a>
-                        )}
-                        {lesson.pdfUrl && (
-                          <a
-                            href={`http://localhost:4002${lesson.pdfUrl}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
-                          >
-                            📄 View PDF
-                          </a>
-                        )}
-                      </div>
-
+                      {/* Links — only visible when enrolled */}
+                      {isEnrolled && (
+                        <div className="flex gap-3 pl-12">
+                          {lesson.videoUrl && (
+                            <a
+                              href={lesson.videoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                              🎥 Watch Video
+                            </a>
+                          )}
+                          {lesson.pdfUrl && (
+                            <a
+                              href={`http://localhost:4002${lesson.pdfUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
+                            >
+                              📄 View PDF
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-12">
                     <BookOpen className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500">No lessons available yet.</p>
-=======
-              <div className="space-y-4 animate-in fade-in duration-300">
-                {lessons.map((lesson, idx) => (
-                  <div
-                    key={lesson.id}
-                    className={`flex items-center p-4 rounded-lg border transition-colors
-                      ${isEnrolled
-                        ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer'
-                        : 'bg-slate-50 border-slate-200 opacity-75'
-                      }`}
-                    onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
-                  >
-                    <div className="flex-shrink-0 mr-4">
-                      {lesson.completed ? (
-                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                          <CheckCircle className="h-5 w-5" />
-                        </div>
-                      ) : isEnrolled ? (
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                          <PlayCircle className="h-5 w-5" />
-                        </div>
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
-                          <Lock className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-900">{idx + 1}. {lesson.title}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{lesson.duration}</p>
-                    </div>
-                    {isEnrolled && (
-                      <Button variant="ghost" size="sm">Start</Button>
-                    )}
->>>>>>> 8a327ac9fda5f214dd63e407e090541b74752b70
                   </div>
                 )}
               </div>
