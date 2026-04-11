@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut,
   FileText,
-  ClipboardList
+  ClipboardList,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Avatar } from './Avatar';
@@ -40,6 +41,7 @@ export function Sidebar({ isOpen, onClose }) {
   const adminLinks = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/admin/users', icon: Users, label: 'Users' },
+    { to: '/admin/pending-tutors', icon: Clock, label: 'Pending Tutors' },
     { to: '/admin/courses', icon: BookOpen, label: 'All Courses' },
     { to: '/admin/reports', icon: FileText, label: 'Reports' }
   ];

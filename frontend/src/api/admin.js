@@ -51,3 +51,39 @@ export const deleteUser = async (userId) => {
     throw new Error(message);
   }
 };
+
+/**
+ * Get all pending tutors (awaiting approval)
+ */
+export const getPendingTutors = async () => {
+  try {
+    const response = await client.get('/users/pending-tutors');
+    return response.data.data.tutors;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch pending tutors');
+  }
+};
+
+/**
+ * Approve a tutor account
+ */
+export const approveTutor = async (userId) => {
+  try {
+    const response = await client.put(`/users/${userId}/approve`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to approve tutor');
+  }
+};
+
+/**
+ * Reject a tutor account
+ */
+export const rejectTutor = async (userId) => {
+  try {
+    const response = await client.put(`/users/${userId}/reject`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to reject tutor');
+  }
+};

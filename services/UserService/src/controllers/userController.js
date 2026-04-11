@@ -77,7 +77,8 @@ const register = async (req, res) => {
           last_name: newUser.last_name,
           email: newUser.email,
           role: newUser.role,
-          is_active: newUser.is_active
+          is_active: newUser.is_active,
+          is_verified: newUser.is_verified || 0
         },
         token
       }
@@ -126,6 +127,14 @@ const login = async (req, res) => {
       });
     }
 
+    // Check if tutor is verified by admin
+    if (user.role === 'tutor' && !user.is_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your tutor account is pending admin approval'
+      });
+    }
+
     // Verify password
     const isPasswordValid = await verifyPassword(password, user.password);
 
@@ -153,7 +162,8 @@ const login = async (req, res) => {
           last_name: user.last_name,
           email: user.email,
           role: user.role,
-          is_active: user.is_active
+          is_active: user.is_active,
+          is_verified: user.is_verified
         },
         token
       }

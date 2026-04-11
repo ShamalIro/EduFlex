@@ -28,6 +28,8 @@ import { ResultsPage } from './pages/student/ResultsPage';
 import { MyCourses } from './pages/student/MyCourses';
 import { AssignmentsPage } from './pages/student/AssignmentsPage';
 import { QuizzesPage } from './pages/student/QuizzesPage';
+import PaymentPage from './pages/student/PaymentPage';
+import FinancialAidPage from './pages/student/FinancialAidPage';
 
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
@@ -40,6 +42,7 @@ import EditLesson from './pages/tutor/EditLesson';
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserManagement } from './pages/admin/UserManagement';
+import { PendingTutors } from './pages/admin/PendingTutors';
 import AdminCourseManagement from './pages/admin/AdminCourseManagement';
 import AdminCourseDetail from './pages/admin/AdminCourseDetail';
 
@@ -56,7 +59,7 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Home - Accessible by all logged in users */}
+          {/* Authenticated Home */}
           <Route
             path="/home"
             element={
@@ -94,7 +97,8 @@ export function App() {
             <Route path="results" element={<ResultsPage />} />
             <Route path="assignments" element={<AssignmentsPage />} />
             <Route path="quizzes" element={<QuizzesPage />} />
-            {/* Fallback for /student root */}
+            <Route path="payment/:courseId" element={<PaymentPage />} />
+            <Route path="financial-aid/:id" element={<FinancialAidPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
@@ -110,22 +114,27 @@ export function App() {
             <Route path="dashboard" element={<TutorDashboard />} />
             <Route path="create-course" element={<CreateCourse />} />
             <Route path="courses" element={<TutorCourseManager />} />
-            <Route 
-              path="courses/:courseId/assessments" 
-              element={<TutorAssessmentsManager />} 
+            <Route
+              path="courses/:courseId/assessments"
+              element={<TutorAssessmentsManager />}
             />
+<<<<<<< HEAD
             <Route path="courses/:id/add-lesson" element={<AddLesson />} />
             <Route path="courses/:id/lessons" element={<CourseLessons />} />
             <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
             <Route 
               path="students" 
+=======
+            <Route
+              path="students"
+>>>>>>> 8a327ac9fda5f214dd63e407e090541b74752b70
               element={
                 <div className="p-8 text-center">
                   <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
                   <p className="text-slate-500">Student Management - Coming Soon</p>
                   <p className="text-slate-400 text-sm mt-2">This will be available when EnrollmentService is ready</p>
                 </div>
-              } 
+              }
             />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -141,6 +150,7 @@ export function App() {
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="pending-tutors" element={<PendingTutors />} />
             <Route path="courses" element={<AdminCourseManagement />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
             <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
