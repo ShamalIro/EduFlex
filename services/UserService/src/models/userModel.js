@@ -55,8 +55,8 @@ const createUser = async (userData) => {
 
     const connection = await pool.getConnection();
     const query = `
-INSERT INTO users (first_name, last_name, email, password, role, is_active, created_at)
-VALUES (?, ?, ?, ?, ?, 1, NOW())
+INSERT INTO users (first_name, last_name, email, password, role, is_active, is_verified, created_at)
+VALUES (?, ?, ?, ?, ?, 1, 0, NOW())
     `;
     const [result] = await connection.query(query, [
 first_name, last_name, email, hashedPassword, role
