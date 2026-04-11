@@ -28,6 +28,8 @@ import { ResultsPage } from './pages/student/ResultsPage';
 import { MyCourses } from './pages/student/MyCourses';
 import { AssignmentsPage } from './pages/student/AssignmentsPage';
 import { QuizzesPage } from './pages/student/QuizzesPage';
+import PaymentPage from './pages/student/PaymentPage';
+import FinancialAidPage from './pages/student/FinancialAidPage';
 
 // Tutor Pages
 import { TutorDashboard } from './pages/tutor/TutorDashboard';
@@ -55,7 +57,7 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Home - Accessible by all logged in users */}
+          {/* Authenticated Home */}
           <Route
             path="/home"
             element={
@@ -93,7 +95,8 @@ export function App() {
             <Route path="results" element={<ResultsPage />} />
             <Route path="assignments" element={<AssignmentsPage />} />
             <Route path="quizzes" element={<QuizzesPage />} />
-            {/* Fallback for /student root */}
+            <Route path="payment/:courseId" element={<PaymentPage />} />
+            <Route path="financial-aid/:id" element={<FinancialAidPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
@@ -109,19 +112,19 @@ export function App() {
             <Route path="dashboard" element={<TutorDashboard />} />
             <Route path="create-course" element={<CreateCourse />} />
             <Route path="courses" element={<TutorCourseManager />} />
-            <Route 
-              path="courses/:courseId/assessments" 
-              element={<TutorAssessmentsManager />} 
+            <Route
+              path="courses/:courseId/assessments"
+              element={<TutorAssessmentsManager />}
             />
-            <Route 
-              path="students" 
+            <Route
+              path="students"
               element={
                 <div className="p-8 text-center">
                   <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
                   <p className="text-slate-500">Student Management - Coming Soon</p>
                   <p className="text-slate-400 text-sm mt-2">This will be available when EnrollmentService is ready</p>
                 </div>
-              } 
+              }
             />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>

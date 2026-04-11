@@ -8,7 +8,6 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(helmet());
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000'],
@@ -17,10 +16,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('dev'));
-// Do not parse bodies in the gateway; proxied services need the raw request stream.
 
-
-// Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -29,7 +25,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Proxy routes
 app.use('/api/users', createProxyMiddleware({
   target: process.env.USER_SERVICE_URL,
   changeOrigin: true,
@@ -69,13 +64,47 @@ app.use('/api/assignments', createProxyMiddleware({
 app.use('/api/enrollments', createProxyMiddleware({
   target: process.env.ENROLLMENT_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/enrollments': ''
-  },
+  pathRewrite: { '^/api/enrollments': '' },
   on: {
     error: (err, req, res) => {
       console.error('Enrollment service proxy error:', err);
       res.status(503).json({ error: 'Enrollment service unavailable' });
+    }
+  }
+}));
+
+app.use('/api/payments', createProxyMiddleware({
+  target: process.env.PAYMENT_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/payments': '/api/payments' },
+  on: {
+    error: (err, req, res) => {
+      console.error('Payment service proxy error:', err);
+      res.status(503).json({ error: 'Payment service unavailable' });
+    }
+  }
+}));
+
+// ✅ OTP route
+app.use('/api/otp', createProxyMiddleware({
+  target: process.env.PAYMENT_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/otp': '/api/otp' },
+  on: {
+    error: (err, req, res) => {
+      console.error('OTP service proxy error:', err);
+      res.status(503).json({ error: 'OTP service unavailable' });
+    }
+  }
+}));
+app.use('/api/notifications', createProxyMiddleware({
+  target: process.env.NOTIFICATION_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/notifications': '/api/notifications' },
+  on: {
+    error: (err, req, res) => {
+      console.error('Notification service proxy error:', err);
+      res.status(503).json({ error: 'Notification service unavailable' });
     }
   }
 }));
@@ -92,12 +121,10 @@ app.use('/api/grades', createProxyMiddleware({
   }
 }));
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
