@@ -266,6 +266,85 @@ const getAdminStats = async (req, res) => {
   }
 };
 
+// Add lesson to course (tutor only)
+const addLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    const requesterId = resolveTutorId(req.user);
+
+    if (String(course.tutor_id) !== String(requesterId) && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to add lessons to this course'
+      });
+    }
+
+    const lessonData = {
+      ...req.body,
+      pdfUrl: req.file ? `/uploads/${req.file.filename}` : null
+    };
+    course.lessons.push(lessonData);
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Lesson added successfully',
+      data: { course }
+    });
+  } catch (error) {
+    console.error('Add lesson error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add lesson',
+      error: error.message
+    });
+  }
+};
+
+// Update lesson
+const updateLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    const lesson = course.lessons.id(req.params.lessonId);
+    if (!lesson) {
+      return res.status(404).json({ success: false, message: 'Lesson not found' });
+    }
+    Object.assign(lesson, req.body);
+    await course.save();
+    res.json({ success: true, course });
+  } catch (error) {
+    console.error('Update lesson error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update lesson', error: error.message });
+  }
+};
+
+// Delete lesson
+const deleteLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    course.lessons.pull(req.params.lessonId);
+    await course.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete lesson error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to delete lesson', error: error.message });
+  }
+};
+
 module.exports = {
   createCourse,
   getAllCourses,
@@ -274,5 +353,8 @@ module.exports = {
   updateCourse,
   deleteCourse,
   togglePublish,
-  getAdminStats
+  getAdminStats,
+  addLesson,
+  updateLesson,
+  deleteLesson
 };

@@ -1,5 +1,7 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
+const upload = multer({ dest: 'uploads/' });
 const {
   createCourse,
   getAllCourses,
@@ -8,7 +10,10 @@ const {
   updateCourse,
   deleteCourse,
   togglePublish,
-  getAdminStats
+  getAdminStats,
+  addLesson,
+  updateLesson,
+  deleteLesson
 } = require('../controllers/courseController');
 const { authMiddleware, isTutor } = require('../middleware/authMiddleware');
 
@@ -24,6 +29,9 @@ router.get('/tutor/my-courses', authMiddleware, isTutor, getMyCourses);
 router.get('/admin/stats', getAdminStats);
 
 // Dynamic routes (always last!)
+router.post('/:id/lessons', authMiddleware, isTutor, upload.single('pdf'), addLesson);
+router.put('/:id/lessons/:lessonId', authMiddleware, isTutor, updateLesson);
+router.delete('/:id/lessons/:lessonId', authMiddleware, isTutor, deleteLesson);
 router.get('/:id', getCourseById);
 router.put('/:id', authMiddleware, isTutor, updateCourse);
 router.delete('/:id', authMiddleware, isTutor, deleteCourse);

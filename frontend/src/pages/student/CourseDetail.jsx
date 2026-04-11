@@ -220,6 +220,58 @@ export function CourseDetail() {
             )}
 
             {activeTab === 'lessons' && (
+<<<<<<< HEAD
+              <div className="space-y-4">
+                {course.lessons && course.lessons.length > 0 ? (
+                  course.lessons.map((lesson, index) => (
+                    <div key={index} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+
+                      {/* Lesson Header */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                          {lesson.lessonNumber}
+                        </div>
+                        <h4 className="font-semibold text-slate-900 text-base">
+                          {lesson.lessonTitle}
+                        </h4>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-slate-500 mb-4 leading-relaxed pl-12">
+                        {lesson.lessonDescription}
+                      </p>
+
+                      {/* Links */}
+                      <div className="flex gap-3 pl-12">
+                        {lesson.videoUrl && (
+                          <a
+                            href={lesson.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                          >
+                            🎥 Watch Video
+                          </a>
+                        )}
+                        {lesson.pdfUrl && (
+                          <a
+                            href={`http://localhost:4002${lesson.pdfUrl}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
+                          >
+                            📄 View PDF
+                          </a>
+                        )}
+                      </div>
+
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <BookOpen className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">No lessons available yet.</p>
+=======
               <div className="space-y-4 animate-in fade-in duration-300">
                 {lessons.map((lesson, idx) => (
                   <div
@@ -253,8 +305,9 @@ export function CourseDetail() {
                     {isEnrolled && (
                       <Button variant="ghost" size="sm">Start</Button>
                     )}
+>>>>>>> 8a327ac9fda5f214dd63e407e090541b74752b70
                   </div>
-                ))}
+                )}
               </div>
             )}
 
@@ -271,7 +324,7 @@ export function CourseDetail() {
             <ul className="space-y-4">
               <li className="flex items-center text-sm text-slate-600">
                 <BookOpen className="h-5 w-5 text-slate-400 mr-3" />
-                {lessonsCount} Lessons
+                <span>{course.lessons?.length || 0} Lessons</span>
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Clock className="h-5 w-5 text-slate-400 mr-3" />
