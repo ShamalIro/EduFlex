@@ -118,16 +118,11 @@ export function App() {
               path="courses/:courseId/assessments"
               element={<TutorAssessmentsManager />}
             />
-<<<<<<< HEAD
             <Route path="courses/:id/add-lesson" element={<AddLesson />} />
             <Route path="courses/:id/lessons" element={<CourseLessons />} />
             <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
             <Route 
               path="students" 
-=======
-            <Route
-              path="students"
->>>>>>> 8a327ac9fda5f214dd63e407e090541b74752b70
               element={
                 <div className="p-8 text-center">
                   <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>

@@ -2,11 +2,7 @@
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-<<<<<<< HEAD
 const { createProxyMiddleware } = require('http-proxy-middleware');
-=======
-const connectDB = require('./config/database');
->>>>>>> 72cd511b6e0ba281a8796f1333200b1acc03fbf8
 require('dotenv').config();
 
 const app = express();
@@ -21,12 +17,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('dev'));
-<<<<<<< HEAD
 // Do not parse bodies in the gateway; proxied services need the raw request stream.
-=======
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
->>>>>>> 72cd511b6e0ba281a8796f1333200b1acc03fbf8
 
 
 // Health check
