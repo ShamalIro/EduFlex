@@ -66,12 +66,29 @@ export function CourseDetail() {
     }
   };
 
+  const handlePayment = () => {
+    navigate(`/student/payment/${id}`, {
+      state: {
+        courseTitle: course.title,
+        amount: course.price || 49.99,
+        thumbnail: course.thumbnail
+      }
+    });
+  };
+
+  const handleFinancialAid = () => {
+    navigate(`/student/financial-aid/${id}`, {
+      state: { courseTitle: course.title }
+    });
+  };
+
   if (isLoading)
     return <div className="p-8 text-center">Loading course details...</div>;
   if (!course) return <div className="p-8 text-center">Course not found</div>;
 
   return (
     <div className="max-w-5xl mx-auto">
+
       {/* Hero Section */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
         <div className="relative h-64 md:h-80">
@@ -82,22 +99,13 @@ export function CourseDetail() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end">
             <div className="p-8 text-white w-full">
-              <Badge
-                variant="info"
-                className="mb-4 bg-indigo-500 text-white border-none"
-              >
+              <Badge variant="info" className="mb-4 bg-indigo-500 text-white border-none">
                 {course.category}
               </Badge>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                {course.title}
-              </h1>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
               <div className="flex flex-wrap items-center gap-6 text-sm font-medium">
                 <div className="flex items-center">
-                  <Avatar
-                    name={course.tutor}
-                    size="sm"
-                    className="mr-2 border-2 border-white"
-                  />
+                  <Avatar name={course.tutor} size="sm" className="mr-2 border-2 border-white" />
                   <span>{course.tutor}</span>
                 </div>
                 <div className="flex items-center">
@@ -128,10 +136,14 @@ export function CourseDetail() {
                 <ProgressBar value={35} />
               </div>
             ) : (
-              <p className="text-slate-600">
-                Join over {enrolledCount.toLocaleString()} students and master this skill
-                today.
-              </p>
+              <div>
+                <p className="text-slate-600 mb-1">
+                  Join over {enrolledCount.toLocaleString()} students and master this skill today.
+                </p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  ${course.price || '49.99'}
+                </p>
+              </div>
             )}
           </div>
           <div className="flex gap-3 w-full md:w-auto">
@@ -144,14 +156,22 @@ export function CourseDetail() {
                 Continue Learning
               </Button>
             ) : (
-              <Button
-                size="lg"
-                className="w-full md:w-auto"
-                onClick={handleEnroll}
-                isLoading={isEnrolling}
-              >
-                Enroll Now
-              </Button>
+              <div className="flex gap-3 w-full md:w-auto">
+                {/* ✅ Financial Aid button */}
+                <button
+                  onClick={handleFinancialAid}
+                  className="px-6 py-2.5 border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition"
+                >
+                  Financial Aid
+                </button>
+                {/* ✅ Buy Now button */}
+                <button
+                  onClick={handlePayment}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+                >
+                  Buy Now — ${course.price || '49.99'}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -166,10 +186,11 @@ export function CourseDetail() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab.toLowerCase())}
-                  className={`
-                    py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                    ${activeTab === tab.toLowerCase() ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}
-                  `}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                    ${activeTab === tab.toLowerCase()
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    }`}
                 >
                   {tab}
                 </button>
@@ -181,25 +202,16 @@ export function CourseDetail() {
             {activeTab === 'overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">
-                    About this course
-                  </h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    {course.description}
-                  </p>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">About this course</h3>
+                  <p className="text-slate-600 leading-relaxed">{course.description}</p>
                 </div>
-
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">
-                    What you'll learn
-                  </h3>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">What you'll learn</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {[1, 2, 3, 4].map((i) => (
                       <div key={i} className="flex items-start">
                         <CheckCircle className="h-5 w-5 text-emerald-500 mr-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-600">
-                          Master core concepts and advanced techniques
-                        </span>
+                        <span className="text-slate-600">Master core concepts and advanced techniques</span>
                       </div>
                     ))}
                   </div>
@@ -212,13 +224,12 @@ export function CourseDetail() {
                 {lessons.map((lesson, idx) => (
                   <div
                     key={lesson.id}
-                    className={`
-                      flex items-center p-4 rounded-lg border transition-colors
-                      ${isEnrolled ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer' : 'bg-slate-50 border-slate-200 opacity-75'}
-                    `}
-                    onClick={() =>
-                      isEnrolled && navigate(`/student/lessons/${lesson.id}`)
-                    }
+                    className={`flex items-center p-4 rounded-lg border transition-colors
+                      ${isEnrolled
+                        ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer'
+                        : 'bg-slate-50 border-slate-200 opacity-75'
+                      }`}
+                    onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
                   >
                     <div className="flex-shrink-0 mr-4">
                       {lesson.completed ? (
@@ -236,17 +247,11 @@ export function CourseDetail() {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-900">
-                        {idx + 1}. {lesson.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {lesson.duration}
-                      </p>
+                      <h4 className="text-sm font-medium text-slate-900">{idx + 1}. {lesson.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{lesson.duration}</p>
                     </div>
                     {isEnrolled && (
-                      <Button variant="ghost" size="sm">
-                        Start
-                      </Button>
+                      <Button variant="ghost" size="sm">Start</Button>
                     )}
                   </div>
                 ))}
@@ -254,14 +259,12 @@ export function CourseDetail() {
             )}
 
             {activeTab === 'reviews' && (
-              <div className="text-center py-12 text-slate-500">
-                Reviews coming soon...
-              </div>
+              <div className="text-center py-12 text-slate-500">Reviews coming soon...</div>
             )}
           </div>
         </div>
 
-        {/* Sidebar Info */}
+        {/* Sidebar */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <h3 className="font-bold text-slate-900 mb-4">Course Features</h3>
