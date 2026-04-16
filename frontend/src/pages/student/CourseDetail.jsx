@@ -275,7 +275,7 @@ export function CourseDetail() {
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Clock className="h-5 w-5 text-slate-400 mr-3" />
-                {course.duration} of content
+                <span>{course.duration} of content</span>
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Award className="h-5 w-5 text-slate-400 mr-3" />

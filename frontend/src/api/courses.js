@@ -63,13 +63,13 @@ export const getEnrolledCourses = async () => {
 };
 
 export const enrollInCourse = async (courseId) => {
-  const response = await courseClient.post('/enrollments', { courseId });
-  return response.data?.data?.enrollment || null;
+  // TODO: Connect to EnrollmentService
+  return { success: true };
 };
 
 export const getEnrollmentStatus = async (courseId) => {
-  const response = await courseClient.get(`/enrollments/course/${courseId}/status`);
-  return response.data?.data || { isEnrolled: false, enrollment: null };
+  // TODO: Connect to EnrollmentService
+  return { isEnrolled: false };
 };
 
 // Get single course by ID
