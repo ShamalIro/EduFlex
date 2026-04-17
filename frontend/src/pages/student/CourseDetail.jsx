@@ -254,7 +254,7 @@ export function CourseDetail() {
                       <Button variant="ghost" size="sm">Start</Button>
                     )}
                   </div>
-                )}
+                ))}
               </div>
             )}
 
