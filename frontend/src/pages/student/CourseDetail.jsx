@@ -55,14 +55,22 @@ export function CourseDetail() {
 
   const handleEnroll = async () => {
     if (!id || isEnrolled) return;
-    setIsEnrolling(true);
-    try {
-      await enrollInCourse(id);
-      setIsEnrolled(true);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsEnrolling(false);
+    
+    // ✅ Free course → directly enroll, skip payment
+    if (course.is_free) {
+      setIsEnrolling(true);
+      try {
+        await enrollInCourse(id);
+        setIsEnrolled(true);
+        console.log('Successfully enrolled in free course!');
+      } catch (error) {
+        console.error('Free enrollment failed:', error);
+      } finally {
+        setIsEnrolling(false);
+      }
+    } else {
+      // 💰 Paid course → go to PaymentService
+      handlePayment();
     }
   };
 
@@ -140,9 +148,13 @@ export function CourseDetail() {
                 <p className="text-slate-600 mb-1">
                   Join over {enrolledCount.toLocaleString()} students and master this skill today.
                 </p>
-                <p className="text-2xl font-bold text-indigo-600">
-                  ${course.price || '49.99'}
-                </p>
+                {course.is_free ? (
+                  <p className="text-2xl font-bold text-emerald-600">FREE</p>
+                ) : (
+                  <p className="text-2xl font-bold text-indigo-600">
+                    ${course.price || '49.99'}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -156,22 +168,17 @@ export function CourseDetail() {
                 Continue Learning
               </Button>
             ) : (
-              <div className="flex gap-3 w-full md:w-auto">
-                {/* ✅ Financial Aid button */}
-                <button
-                  onClick={handleFinancialAid}
-                  className="px-6 py-2.5 border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition"
-                >
-                  Financial Aid
-                </button>
-                {/* ✅ Buy Now button */}
-                <button
-                  onClick={handlePayment}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
-                >
-                  Buy Now — ${course.price || '49.99'}
-                </button>
-              </div>
+              <button
+                onClick={handleEnroll}
+                disabled={isEnrolling}
+                className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
+                  course.is_free 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isEnrolling ? 'Processing...' : (course.is_free ? '🆓 Enroll for Free' : '💰 Buy Now')}
+              </button>
             )}
           </div>
         </div>

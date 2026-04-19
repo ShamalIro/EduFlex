@@ -28,6 +28,15 @@ export function CourseCard({
             {course.category}
           </Badge>
         </div>
+
+        {/* FREE Badge */}
+        {course.is_free && (
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-emerald-500 text-white border-none shadow-md">
+              FREE
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="p-5 flex-1 flex flex-col">
@@ -47,6 +56,17 @@ export function CourseCard({
 
         <p className="text-sm text-slate-500 mb-4">by {course.tutor_name}</p>
 
+        {/* Price section */}
+        <div className="mt-2 mb-4">
+          {course.is_free ? (
+            <span className="text-green-600 font-bold text-lg">Free</span>
+          ) : (
+            <span className="text-slate-900 font-bold text-lg">
+              ${course.price || '0.00'}
+            </span>
+          )}
+        </div>
+
         <div className="mt-auto space-y-4">
           {!isEnrolled ?
           <>
@@ -54,8 +74,8 @@ export function CourseCard({
                 <Users className="h-4 w-4 mr-1.5" />
                 {(course.students_count || 0).toLocaleString()} students
               </div>
-              <Button onClick={onEnroll} className="w-full">
-                Enroll Now
+              <Button onClick={onEnroll} className={`w-full ${course.is_free ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}>
+                {course.is_free ? 'Enroll Free' : 'Enroll Now'}
               </Button>
             </> :
 
