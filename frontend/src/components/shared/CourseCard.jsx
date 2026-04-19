@@ -74,17 +74,32 @@ export function CourseCard({
                 <Users className="h-4 w-4 mr-1.5" />
                 {(course.students_count || 0).toLocaleString()} students
               </div>
-              <Button onClick={onEnroll} className={`w-full ${course.is_free ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}>
+              <button
+                onClick={onEnroll}
+                className={`w-full py-2 rounded-lg font-semibold text-white transition
+                  ${course.is_free
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+              >
                 {course.is_free ? 'Enroll Free' : 'Enroll Now'}
-              </Button>
+              </button>
             </> :
 
           <>
               <ProgressBar value={progress} size="sm" showLabel />
-              <Button onClick={onContinue} variant="primary" className="w-full">
-                <PlayCircle className="h-4 w-4 mr-2" />
-                Continue Learning
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={onContinue} variant="primary" className="w-full">
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Continue Learning
+                </Button>
+                <button
+                  disabled
+                  className="w-full py-2 rounded-lg font-semibold text-white bg-green-500 cursor-not-allowed opacity-80"
+                >
+                  ✅ Enrolled
+                </button>
+              </div>
             </>
           }
         </div>

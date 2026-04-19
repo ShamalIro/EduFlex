@@ -41,35 +41,57 @@ const enrichCourseWithEnrollment = (course, enrollment) => ({
 });
 
 export const getEnrolledCourses = async () => {
-  const enrollmentResponse = await courseClient.get('/enrollments/mine');
-  const enrollments = extractEnrollmentList(enrollmentResponse.data);
+  try {
+    // Get enrollment records from EnrollmentService
+    const enrollRes = await courseClient.get('/grades/mine');
+    const enrollments = enrollRes.data.data.enrollments;
 
-  if (!enrollments.length) return [];
+    if (!enrollments || enrollments.length === 0) return [];
 
-  const courses = await Promise.all(
-    enrollments.map(async (enrollment) => {
+    // For each enrollment, fetch full course from CourseService
+    const coursePromises = enrollments.map(async (enrollment) => {
       try {
-        const response = await courseClient.get(`/courses/${enrollment.course_id}`);
-        const course = response.data?.data?.course;
-        if (!course) return null;
-        return enrichCourseWithEnrollment(course, enrollment);
-      } catch (error) {
+        const courseRes = await courseClient.get(`/courses/${enrollment.course_id}`);
+        const course = courseRes.data.data.course;
+        return {
+          ...course,
+          progress: enrollment.progress || 0,  // attach progress
+          enrollment_id: enrollment._id
+        };
+      } catch {
         return null;
       }
-    })
-  );
+    });
 
-  return courses.filter(Boolean);
+    const courses = await Promise.all(coursePromises);
+    return courses.filter(Boolean); // remove nulls
+
+  } catch (error) {
+    console.error('getEnrolledCourses error:', error);
+    return [];
+  }
 };
 
-export const enrollInCourse = async (courseId) => {
-  // TODO: Connect to EnrollmentService
-  return { success: true };
+export const enrollFreeCourse = async (courseId) => {
+  try {
+    const res = await courseClient.post('/grades', { 
+      courseId: courseId  // ← matches EnrollmentService body
+    });
+    return res.data;
+  } catch (error) {
+    console.error('Enroll error:', error);
+    throw error;
+  }
 };
 
 export const getEnrollmentStatus = async (courseId) => {
-  // TODO: Connect to EnrollmentService
-  return { isEnrolled: false };
+  try {
+    const cleanId = String(courseId).trim(); // remove any whitespace
+    const res = await courseClient.get(`/grades/course/${cleanId}/status`);
+    return res.data.data;
+  } catch (error) {
+    return { isEnrolled: false };
+  }
 };
 
 // Get single course by ID

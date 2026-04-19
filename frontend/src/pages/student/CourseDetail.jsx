@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Clock,
   Users,
@@ -13,7 +14,7 @@ import {
 import {
   getCourseById,
   getCourseLessons,
-  enrollInCourse,
+  enrollFreeCourse,
   getEnrollmentStatus
 } from '../../api/courses';
 import { Button } from '../../components/ui/Button';
@@ -53,23 +54,26 @@ export function CourseDetail() {
     fetchData();
   }, [id]);
 
+  const handleEnrollFree = async () => {
+    try {
+      setIsEnrolling(true);
+      await enrollFreeCourse(course._id);
+      setIsEnrolled(true);
+      toast.success('Successfully enrolled!');
+      navigate('/student/my-courses');
+    } catch (error) {
+      toast.error('Enrollment failed. Try again.');
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   const handleEnroll = async () => {
     if (!id || isEnrolled) return;
     
-    // ✅ Free course → directly enroll, skip payment
     if (course.is_free) {
-      setIsEnrolling(true);
-      try {
-        await enrollInCourse(id);
-        setIsEnrolled(true);
-        console.log('Successfully enrolled in free course!');
-      } catch (error) {
-        console.error('Free enrollment failed:', error);
-      } finally {
-        setIsEnrolling(false);
-      }
+      await handleEnrollFree();
     } else {
-      // 💰 Paid course → go to PaymentService
       handlePayment();
     }
   };
