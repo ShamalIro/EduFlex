@@ -8,6 +8,15 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const serviceTargets = {
+  user: process.env.USER_SERVICE_URL || 'http://localhost:4001',
+  course: process.env.COURSE_SERVICE_URL || 'http://localhost:4002',
+  assignment: process.env.ASSIGNMENT_SERVICE_URL || 'http://localhost:4003',
+  enrollment: process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004',
+  grade: process.env.GRADE_SERVICE_URL || 'http://localhost:4004',
+  payment: process.env.PAYMENT_SERVICE_URL || 'http://localhost:4005',
+  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006'
+};
 
 app.use(helmet());
 app.use(cors({
@@ -28,7 +37,7 @@ app.get('/health', (req, res) => {
 
 // User Service
 app.use('/api/users', createProxyMiddleware({
-  target: process.env.USER_SERVICE_URL,
+  target: serviceTargets.user,
   changeOrigin: true,
   pathRewrite: { '^/api/users': '/api/users' },
   on: {
@@ -41,7 +50,7 @@ app.use('/api/users', createProxyMiddleware({
 
 // Course Service
 app.use('/api/courses', createProxyMiddleware({
-  target: process.env.COURSE_SERVICE_URL,
+  target: serviceTargets.course,
   changeOrigin: true,
   pathRewrite: { '^/api/courses': '' },
   on: {
@@ -54,7 +63,7 @@ app.use('/api/courses', createProxyMiddleware({
 
 // Assignment Service
 app.use('/api/assignments', createProxyMiddleware({
-  target: process.env.ASSIGNMENT_SERVICE_URL,
+  target: serviceTargets.assignment,
   changeOrigin: true,
   pathRewrite: { '^/api/assignments': '' },
   on: {
@@ -67,7 +76,7 @@ app.use('/api/assignments', createProxyMiddleware({
 
 // Enrollment Service
 app.use('/api/enrollments', createProxyMiddleware({
-  target: process.env.ENROLLMENT_SERVICE_URL,
+  target: serviceTargets.enrollment,
   changeOrigin: true,
   pathRewrite: { '^/api/enrollments': '' },
   on: {
@@ -80,7 +89,7 @@ app.use('/api/enrollments', createProxyMiddleware({
 
 // Payment Service
 app.use('/api/payments', createProxyMiddleware({
-  target: process.env.PAYMENT_SERVICE_URL,
+  target: serviceTargets.payment,
   changeOrigin: true,
   pathRewrite: { '^/api/payments': '/api/payments' },
   on: {
@@ -93,7 +102,7 @@ app.use('/api/payments', createProxyMiddleware({
 
 // OTP Service
 app.use('/api/otp', createProxyMiddleware({
-  target: process.env.PAYMENT_SERVICE_URL,
+  target: serviceTargets.payment,
   changeOrigin: true,
   pathRewrite: { '^/api/otp': '/api/otp' },
   on: {
@@ -106,7 +115,7 @@ app.use('/api/otp', createProxyMiddleware({
 
 // Notification Service
 app.use('/api/notifications', createProxyMiddleware({
-  target: process.env.NOTIFICATION_SERVICE_URL,
+  target: serviceTargets.notification,
   changeOrigin: true,
   pathRewrite: { '^/api/notifications': '/api/notifications' },
   on: {
@@ -120,7 +129,7 @@ app.use('/api/notifications', createProxyMiddleware({
 // Grade/Enrollment Service — axios direct forward
 app.use('/api/grades', express.json(), async (req, res) => {
   try {
-    const targetUrl = `${process.env.GRADE_SERVICE_URL}${req.url}`;
+    const targetUrl = `${serviceTargets.grade}${req.url}`;
     console.log(`[GRADES] ${req.method} → ${targetUrl}`);
 
     const response = await axios({
