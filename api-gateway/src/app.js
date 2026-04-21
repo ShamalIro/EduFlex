@@ -152,6 +152,19 @@ app.use('/api/grades', express.json(), async (req, res) => {
   }
 });
 
+// Discussion Service
+app.use('/api/discussions', createProxyMiddleware({
+  target: process.env.DISCUSSION_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/discussions': '/api/discussions' },
+  on: {
+    error: (err, req, res) => {
+      console.error('Discussion service proxy error:', err.message);
+      res.status(503).json({ error: 'Discussion service unavailable' });
+    }
+  }
+}));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
