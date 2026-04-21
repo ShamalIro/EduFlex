@@ -9,13 +9,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const serviceTargets = {
-  user: process.env.USER_SERVICE_URL || 'http://localhost:4001',
-  course: process.env.COURSE_SERVICE_URL || 'http://localhost:4002',
-  assignment: process.env.ASSIGNMENT_SERVICE_URL || 'http://localhost:4003',
-  enrollment: process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004',
-  grade: process.env.GRADE_SERVICE_URL || 'http://localhost:4004',
-  payment: process.env.PAYMENT_SERVICE_URL || 'http://localhost:4005',
-  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006'
+  user: process.env.USER_SERVICE_URL || 'http://127.0.0.1:4001',
+  course: process.env.COURSE_SERVICE_URL || 'http://127.0.0.1:4002',
+  assignment: process.env.ASSIGNMENT_SERVICE_URL || 'http://127.0.0.1:4003',
+  enrollment: process.env.ENROLLMENT_SERVICE_URL || 'http://127.0.0.1:4004',
+  grade: process.env.GRADE_SERVICE_URL || 'http://127.0.0.1:4004',
+  payment: process.env.PAYMENT_SERVICE_URL || 'http://127.0.0.1:4005',
+  notification: process.env.NOTIFICATION_SERVICE_URL || 'http://127.0.0.1:4006',
+  discussion: process.env.DISCUSSION_SERVICE_URL || 'http://127.0.0.1:4008'
 };
 
 app.use(helmet());
@@ -154,7 +155,7 @@ app.use('/api/grades', express.json(), async (req, res) => {
 
 // Discussion Service
 app.use('/api/discussions', createProxyMiddleware({
-  target: process.env.DISCUSSION_SERVICE_URL,
+  target: serviceTargets.discussion,
   changeOrigin: true,
   pathRewrite: { '^/api/discussions': '/api/discussions' },
   on: {
