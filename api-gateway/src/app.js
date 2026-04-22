@@ -52,7 +52,7 @@ app.use('/api/courses', createProxyMiddleware({
 app.use('/api/assignments', createProxyMiddleware({
   target: process.env.ASSIGNMENT_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: { '^/api/assignments': '' },
+   pathRewrite: { '^/api/assignments': '/api/assessments' },
   on: {
     error: (err, req, res) => {
       console.error('Assignment service proxy error:', err);
