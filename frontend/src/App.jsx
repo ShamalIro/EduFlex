@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -48,8 +50,13 @@ import AdminCourseDetail from './pages/admin/AdminCourseDetail';
 
 export function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <>
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+      />
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<HomePage />} />
@@ -121,8 +128,8 @@ export function App() {
             <Route path="courses/:id/add-lesson" element={<AddLesson />} />
             <Route path="courses/:id/lessons" element={<CourseLessons />} />
             <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
-            <Route
-              path="students"
+            <Route 
+              path="students" 
               element={
                 <div className="p-8 text-center">
                   <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
@@ -157,5 +164,6 @@ export function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </>
   );
 }

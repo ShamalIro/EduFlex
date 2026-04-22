@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCourses } from '../../api/courses';
+import { getCourses, getEnrolledCourses } from '../../api/courses';
 import { CourseCard } from '../../components/shared/CourseCard';
 import { Button } from '../../components/ui/Button';
 import { useNavigate, useOutletContext } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 export function CourseCatalog() {
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
+  const [enrolledIds, setEnrolledIds] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -14,13 +15,23 @@ export function CourseCatalog() {
   const { cart = [], addToCart } = useOutletContext() || {};
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      const data = await getCourses();
-      setCourses(data);
-      setFilteredCourses(data);
+    const fetchData = async () => {
+      const [coursesData, enrolledData] = await Promise.all([
+        getCourses(),
+        getEnrolledCourses()
+      ]);
+      
+      setCourses(coursesData);
+      setFilteredCourses(coursesData);
+      
+      // Extract just the IDs
+      const ids = enrolledData.map(c => 
+        String(c._id || c.id || c.course_id)
+      );
+      setEnrolledIds(ids);
       setIsLoading(false);
     };
-    fetchCourses();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -30,6 +41,11 @@ export function CourseCatalog() {
     }
     setFilteredCourses(result);
   }, [selectedCategory, courses]);
+
+  // Helper to check if enrolled
+  const isEnrolled = (courseId) => {
+    return enrolledIds.includes(String(courseId));
+  };
 
   const categories = [
     'All',
@@ -83,23 +99,26 @@ export function CourseCatalog() {
             <div key={course._id} className="relative">
               <CourseCard
                 course={course}
+                isEnrolled={isEnrolled(course._id)}
                 onEnroll={() => navigate(`/student/courses/${course._id}`)}
               />
-              {/* ✅ Add to Cart button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addToCart && addToCart(course);
-                }}
-                disabled={!!cart.find(c => c._id === course._id)}
-                className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-full font-medium transition ${
-                  cart.find(c => c._id === course._id)
-                    ? 'bg-green-500 text-white cursor-default'
-                    : 'bg-black/50 text-white backdrop-blur-sm hover:bg-blue-600'
-                }`}
-              >
-                {cart.find(c => c._id === course._id) ? '✓ Added' : '+ Cart'}
-              </button>
+              {/* ✅ Add to Cart button — hide if enrolled */}
+              {!isEnrolled(course._id) && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addToCart && addToCart(course);
+                  }}
+                  disabled={!!cart.find(c => c._id === course._id)}
+                  className={`absolute top-2 right-2 text-xs px-2.5 py-1 rounded-full font-medium transition ${
+                    cart.find(c => c._id === course._id)
+                      ? 'bg-green-500 text-white cursor-default'
+                      : 'bg-black/50 text-white backdrop-blur-sm hover:bg-blue-600'
+                  }`}
+                >
+                  {cart.find(c => c._id === course._id) ? '✓ Added' : '+ Cart'}
+                </button>
+              )}
             </div>
           ))}
         </div>

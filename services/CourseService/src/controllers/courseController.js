@@ -19,7 +19,11 @@ const resolveTutorName = (user = {}) => {
 // Create course (tutor only)
 const createCourse = async (req, res) => {
   try {
-    const { title, description, category, level, duration, price, thumbnail } = req.body;
+    const { 
+      title, description, thumbnail, 
+      category, level, duration, 
+      price, is_free 
+    } = req.body;
     const tutorId = resolveTutorId(req.user);
 
     if (!title || !description || !category || !level || !duration) {
@@ -36,22 +40,24 @@ const createCourse = async (req, res) => {
       });
     }
 
-    const course = await Course.create({
+    const course = new Course({
       title,
       description,
+      thumbnail,
       category,
       level,
       duration,
-      price: price || 0,
-      thumbnail: thumbnail || null,
+      price: is_free ? 0 : price,
+      is_free: is_free || false,
       tutor_id: tutorId,
       tutor_name: resolveTutorName(req.user)
     });
 
-    res.status(201).json({
-      success: true,
+    await course.save();
+    res.status(201).json({ 
+      success: true, 
       message: 'Course created successfully',
-      data: { course }
+      data: { course } 
     });
   } catch (error) {
     console.error('Create course error:', error.message);

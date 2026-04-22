@@ -8,7 +8,8 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4004;
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/eduflex_enrollments';
+const DEFAULT_MONGO_URI = 'mongodb://127.0.0.1:27017/eduflex_enrollments';
+const MONGO_URI = process.env.MONGODB_URI || DEFAULT_MONGO_URI;
 
 const enrollmentSchema = new mongoose.Schema(
   {
@@ -60,6 +61,19 @@ const connectDB = async () => {
     const conn = await mongoose.connect(MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
+    if (MONGO_URI !== DEFAULT_MONGO_URI) {
+      console.warn(`Primary MongoDB URI failed: ${error.message}`);
+      console.warn(`Falling back to local MongoDB: ${DEFAULT_MONGO_URI}`);
+      try {
+        const fallbackConn = await mongoose.connect(DEFAULT_MONGO_URI);
+        console.log(`MongoDB Connected: ${fallbackConn.connection.host}`);
+        return;
+      } catch (fallbackError) {
+        console.error(`MongoDB fallback failed: ${fallbackError.message}`);
+        process.exit(1);
+      }
+    }
+
     console.error(`MongoDB connection failed: ${error.message}`);
     process.exit(1);
   }

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Clock,
   Users,
@@ -13,9 +14,16 @@ import {
 import {
   getCourseById,
   getCourseLessons,
-  enrollInCourse,
+  enrollFreeCourse,
   getEnrollmentStatus
 } from '../../api/courses';
+import {
+  getPosts,
+  createPost,
+  createReply,
+  getReplies,
+  upvotePost
+} from '../../api/discussions';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
@@ -24,12 +32,19 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 export function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const tabSectionRef = useRef(null);
   const [course, setCourse] = useState(undefined);
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [isPostingQuestion, setIsPostingQuestion] = useState(false);
+  const [expandedPost, setExpandedPost] = useState(null);
+  const [replies, setReplies] = useState({});
+  const [newReplyContent, setNewReplyContent] = useState({});
 
   const enrolledCount = Number.isFinite(Number(course?.enrolledCount))
     ? Number(course.enrolledCount)
@@ -37,6 +52,12 @@ export function CourseDetail() {
   const lessonsCount = Number.isFinite(Number(course?.lessonsCount))
     ? Number(course.lessonsCount)
     : lessons.length;
+
+  useEffect(() => {
+    if (activeTab === 'q&a' && id) {
+      getPosts(id).then(setPosts).catch(console.error);
+    }
+  }, [activeTab, id]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,16 +74,27 @@ export function CourseDetail() {
     fetchData();
   }, [id]);
 
-  const handleEnroll = async () => {
-    if (!id || isEnrolled) return;
-    setIsEnrolling(true);
+  const handleEnrollFree = async () => {
     try {
-      await enrollInCourse(id);
+      setIsEnrolling(true);
+      await enrollFreeCourse(course._id);
       setIsEnrolled(true);
+      toast.success('Successfully enrolled!');
+      navigate('/student/my-courses');
     } catch (error) {
-      console.error(error);
+      toast.error('Enrollment failed. Try again.');
     } finally {
       setIsEnrolling(false);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!id || isEnrolled) return;
+    
+    if (course.is_free) {
+      await handleEnrollFree();
+    } else {
+      handlePayment();
     }
   };
 
@@ -140,36 +172,56 @@ export function CourseDetail() {
                 <p className="text-slate-600 mb-1">
                   Join over {enrolledCount.toLocaleString()} students and master this skill today.
                 </p>
-                <p className="text-2xl font-bold text-indigo-600">
-                  ${course.price || '49.99'}
-                </p>
+                {course.is_free ? (
+                  <p className="text-2xl font-bold text-emerald-600">FREE</p>
+                ) : (
+                  <p className="text-2xl font-bold text-indigo-600">
+                    ${course.price || '49.99'}
+                  </p>
+                )}
               </div>
             )}
           </div>
           <div className="flex gap-3 w-full md:w-auto">
             {isEnrolled ? (
-              <Button
-                size="lg"
-                className="w-full md:w-auto"
-                onClick={() => navigate(`/student/lessons/${lessons[0]?.id}`)}
-              >
-                Continue Learning
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  className="w-full md:w-auto"
+                  onClick={() => navigate(`/student/lessons/${lessons[0]?.id}`)}
+                >
+                  Continue Learning
+                </Button>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="w-full md:w-auto border-purple-300 
+                    text-purple-700 hover:bg-purple-50"
+                  onClick={() => {
+                    setActiveTab('q&a');
+                    setTimeout(() => {
+                      tabSectionRef.current?.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                      });
+                    }, 100);
+                  }}
+                >
+                  💬 Q&A
+                </Button>
+              </>
             ) : (
-              <div className="flex gap-3 w-full md:w-auto">
-                <button
-                  onClick={handleFinancialAid}
-                  className="px-6 py-2.5 border-2 border-indigo-600 text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition"
-                >
-                  Financial Aid
-                </button>
-                <button
-                  onClick={handlePayment}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
-                >
-                  Buy Now — ${course.price || '49.99'}
-                </button>
-              </div>
+              <button
+                onClick={handleEnroll}
+                disabled={isEnrolling}
+                className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
+                  course.is_free 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isEnrolling ? 'Processing...' : (course.is_free ? '🆓 Enroll for Free' : '💰 Buy Now')}
+              </button>
             )}
           </div>
         </div>
@@ -178,9 +230,9 @@ export function CourseDetail() {
       {/* Content Tabs */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="border-b border-slate-200">
+          <div className="border-b border-slate-200" ref={tabSectionRef}>
             <nav className="flex space-x-8">
-              {['Overview', 'Lessons', 'Reviews'].map((tab) => (
+              {['Overview', 'Lessons', 'Reviews', 'Q&A'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab.toLowerCase())}
@@ -219,75 +271,241 @@ export function CourseDetail() {
 
             {activeTab === 'lessons' && (
               <div className="space-y-4 animate-in fade-in duration-300">
-                {course.lessons && course.lessons.length > 0 ? (
-                  course.lessons.map((lesson, index) => (
-                    <div
-                      key={index}
-                      className={`bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow
-                        ${isEnrolled ? 'hover:shadow-md cursor-pointer' : 'opacity-75'}`}
-                      onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
-                    >
-                      {/* Lesson Header */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                          {isEnrolled ? (
-                            lesson.completed
-                              ? <CheckCircle className="h-5 w-5 text-emerald-600" />
-                              : <PlayCircle className="h-5 w-5" />
-                          ) : (
-                            <Lock className="h-4 w-4" />
-                          )}
+                {lessons.map((lesson, idx) => (
+                  <div
+                    key={lesson.id}
+                    className={`flex items-center p-4 rounded-lg border transition-colors
+                      ${isEnrolled
+                        ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer'
+                        : 'bg-slate-50 border-slate-200 opacity-75'
+                      }`}
+                    onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
+                  >
+                    <div className="flex-shrink-0 mr-4">
+                      {lesson.completed ? (
+                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                          <CheckCircle className="h-5 w-5" />
                         </div>
-                        <h4 className="font-semibold text-slate-900 text-base">
-                          {lesson.lessonTitle}
-                        </h4>
-                      </div>
-
-                      {/* Description */}
-                      <p className="text-sm text-slate-500 mb-4 leading-relaxed pl-12">
-                        {lesson.lessonDescription}
-                      </p>
-
-                      {/* Links — only visible when enrolled */}
-                      {isEnrolled && (
-                        <div className="flex gap-3 pl-12">
-                          {lesson.videoUrl && (
-                            <a
-                              href={lesson.videoUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                            >
-                              🎥 Watch Video
-                            </a>
-                          )}
-                          {lesson.pdfUrl && (
-                            <a
-                              href={`http://localhost:4002${lesson.pdfUrl}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
-                            >
-                              📄 View PDF
-                            </a>
-                          )}
+                      ) : isEnrolled ? (
+                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                          <PlayCircle className="h-5 w-5" />
+                        </div>
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                          <Lock className="h-4 w-4" />
                         </div>
                       )}
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <BookOpen className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">No lessons available yet.</p>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-slate-900">{idx + 1}. {lesson.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{lesson.duration}</p>
+                    </div>
+                    {isEnrolled && (
+                      <Button variant="ghost" size="sm">Start</Button>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             )}
 
             {activeTab === 'reviews' && (
               <div className="text-center py-12 text-slate-500">Reviews coming soon...</div>
+            )}
+
+            {activeTab === 'q&a' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+
+                {/* Ask Question Box */}
+                {isEnrolled ? (
+                  <div className="bg-white border border-slate-200 rounded-xl p-4">
+                    <h4 className="font-semibold text-slate-800 mb-3">
+                      Ask a Question
+                    </h4>
+                    <textarea
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      placeholder="What would you like to ask about this course?"
+                      rows={3}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 
+                        text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        disabled={isPostingQuestion || !newPostContent.trim()}
+                        onClick={async () => {
+                          if (!newPostContent.trim()) return;
+                          setIsPostingQuestion(true);
+                          try {
+                            const post = await createPost(id, newPostContent);
+                            setPosts(prev => [post, ...prev]);
+                            setNewPostContent('');
+                            toast.success('Question posted!');
+                          } catch {
+                            toast.error('Failed to post question');
+                          } finally {
+                            setIsPostingQuestion(false);
+                          }
+                        }}
+                        className="px-4 py-2 bg-indigo-600 text-white text-sm 
+                          rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {isPostingQuestion ? 'Posting...' : 'Post Question'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 
+                      text-center text-amber-700 text-sm">
+                    Enroll in this course to join the discussion
+                  </div>
+                )}
+
+                {/* Posts List */}
+                {posts.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <p className="text-lg font-medium">No questions yet</p>
+                    <p className="text-sm mt-1">Be the first to ask a question!</p>
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <div key={post._id}
+                      className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+
+                      {/* Post Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 
+                              flex items-center justify-center text-indigo-700 
+                              font-bold text-sm">
+                            {post.author_name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {post.author_name}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {post.author_role} · {new Date(post.createdAt)
+                                .toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        {post.is_pinned && (
+                          <span className="text-xs bg-amber-100 text-amber-700 
+                              px-2 py-1 rounded-full font-medium">
+                            📌 Pinned
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Post Content */}
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        {post.content}
+                      </p>
+
+                      {/* Post Actions */}
+                      <div className="flex items-center gap-4 pt-1">
+                        <button
+                          onClick={async () => {
+                            await upvotePost(post._id);
+                            const updated = await getPosts(id);
+                            setPosts(updated);
+                          }}
+                          className="flex items-center gap-1 text-xs text-slate-500 
+                            hover:text-indigo-600 transition"
+                        >
+                          👍 {post.upvotes?.length || 0}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (expandedPost === post._id) {
+                              setExpandedPost(null);
+                            } else {
+                              setExpandedPost(post._id);
+                              const r = await getReplies(post._id);
+                              setReplies(prev => ({ ...prev, [post._id]: r }));
+                            }
+                          }}
+                          className="flex items-center gap-1 text-xs text-slate-500 
+                            hover:text-indigo-600 transition"
+                        >
+                          💬 {post.reply_count || 0} Replies
+                        </button>
+                      </div>
+
+                      {/* Replies Section */}
+                      {expandedPost === post._id && (
+                        <div className="border-t border-slate-100 pt-3 space-y-3">
+                          {(replies[post._id] || []).map((reply) => (
+                            <div key={reply._id}
+                              className="flex gap-3 pl-4 border-l-2 border-indigo-100">
+                              <div className="w-7 h-7 rounded-full bg-emerald-100 
+                                  flex items-center justify-center text-emerald-700 
+                                  font-bold text-xs flex-shrink-0">
+                                {reply.author_name?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-semibold text-slate-800">
+                                    {reply.author_name}
+                                  </p>
+                                  {reply.is_best_answer && (
+                                    <span className="text-xs bg-green-100 
+                                        text-green-700 px-2 py-0.5 rounded-full">
+                                      ✅ Best Answer
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-600 mt-0.5">
+                                  {reply.content}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Reply Input */}
+                          {isEnrolled && (
+                            <div className="flex gap-2 pt-2">
+                              <input
+                                type="text"
+                                placeholder="Write a reply..."
+                                value={newReplyContent[post._id] || ''}
+                                onChange={(e) => setNewReplyContent(prev => ({
+                                  ...prev,
+                                  [post._id]: e.target.value
+                                }))}
+                                className="flex-1 border border-slate-300 rounded-lg 
+                                  px-3 py-1.5 text-xs focus:outline-none 
+                                  focus:ring-2 focus:ring-indigo-300"
+                              />
+                              <button
+                                onClick={async () => {
+                                  const content = newReplyContent[post._id];
+                                  if (!content?.trim()) return;
+                                  try {
+                                    await createReply(post._id, content);
+                                    const r = await getReplies(post._id);
+                                    setReplies(prev => ({ ...prev, [post._id]: r }));
+                                    setNewReplyContent(prev => ({
+                                      ...prev, [post._id]: ''
+                                    }));
+                                    toast.success('Reply posted!');
+                                  } catch {
+                                    toast.error('Failed to post reply');
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-indigo-600 text-white 
+                                  text-xs rounded-lg hover:bg-indigo-700"
+                              >
+                                Reply
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -303,7 +521,7 @@ export function CourseDetail() {
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Clock className="h-5 w-5 text-slate-400 mr-3" />
-                {course.duration} of content
+                <span>{course.duration} of content</span>
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Award className="h-5 w-5 text-slate-400 mr-3" />

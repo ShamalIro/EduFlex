@@ -34,6 +34,7 @@ export function CreateCourse() {
     duration: '',
     price: '',
     thumbnail: '',
+    is_free: false,
   });
 
   const [touched, setTouched] = useState({
@@ -44,6 +45,7 @@ export function CreateCourse() {
     duration: false,
     price: false,
     thumbnail: false,
+    is_free: false,
   });
 
   const validateField = (name, value) => {
@@ -63,7 +65,8 @@ export function CreateCourse() {
         return '';
 
       case 'price':
-        if (value === '') return 'Price is required';
+        // Price is optional if course is free
+        if (value === '') return '';
         if (isNaN(value) || Number(value) < 0) return 'Price must be a valid positive number';
         return '';
 
@@ -96,16 +99,17 @@ export function CreateCourse() {
     !errors.description &&
     !errors.duration &&
     !errors.price &&
-    !errors.thumbnail;
+    !errors.thumbnail &&
+    (formData.is_free || (formData.price && !isNaN(formData.price) && Number(formData.price) >= 0));
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setSubmitError('');
     if (name === 'thumbnail') setImageError(false);
 
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -128,6 +132,7 @@ export function CreateCourse() {
       duration: true,
       price: true,
       thumbnail: true,
+      is_free: true,
     });
 
     setSubmitError('');
@@ -145,8 +150,9 @@ export function CreateCourse() {
         title: formData.title.trim(),
         description: formData.description.trim(),
         duration: formData.duration.trim(),
-        price: Number(formData.price),
+        price: formData.is_free ? 0 : Number(formData.price),
         thumbnail: formData.thumbnail.trim(),
+        is_free: formData.is_free,
         currency: 'LKR',
       };
 
@@ -427,6 +433,70 @@ export function CreateCourse() {
                   <li>Set the price in LKR</li>
                   <li>Use a professional thumbnail image</li>
                 </ul>
+              </Card>
+
+              {/* Pricing Section */}
+              <Card className="p-6 bg-white shadow-sm rounded-2xl">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Course Pricing
+                  </label>
+                  
+                  {/* Toggle Buttons */}
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, is_free: false }))}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        !formData.is_free 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      💰 Paid Course
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, is_free: true }))}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        formData.is_free 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      🆓 Free Course
+                    </button>
+                  </div>
+
+                  {/* Show price input only if PAID */}
+                  {!formData.is_free && (
+                    <div className="mt-3">
+                      <label className="block text-sm text-slate-600 mb-1">
+                        Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        min="0"
+                        placeholder="e.g. 29.99"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  )}
+
+                  {/* Free badge preview */}
+                  {formData.is_free && (
+                    <div className="mt-3 flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                      <span>✅</span>
+                      <span className="text-sm">
+                        This course will be FREE for all students
+                      </span>
+                    </div>
+                  )}
+                </div>
               </Card>
             </div>
           </div>
