@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const axios = require('axios'); // ✅ Added
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
@@ -113,6 +114,20 @@ app.post('/', authMiddleware, async (req, res) => {
       course_id: String(courseId),
       status: 'active'
     });
+
+    // ✅ Added - Send enrollment notification
+    try {
+      await axios.post('http://localhost:4006/api/notifications', {
+        user_id: String(req.user.id),
+        title: '🎉 Enrollment Successful!',
+        message: 'You have successfully enrolled in a new course. Start learning now!',
+        type: 'enrollment',
+        icon: '🎓'
+      });
+      console.log(`✅ Notification sent to user ${req.user.id}`);
+    } catch (notifError) {
+      console.error('Notification error:', notifError.message);
+    }
 
     return res.status(201).json({
       success: true,
