@@ -8,6 +8,7 @@ const replySchema = new mongoose.Schema({
   content: { type: String, required: true },
   is_best_answer: { type: Boolean, default: false },
   is_deleted: { type: Boolean, default: false },
+  is_edited: { type: Boolean, default: false },
   upvotes: [{ type: String }]
 }, { timestamps: true });
 

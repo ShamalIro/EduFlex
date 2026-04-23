@@ -112,8 +112,12 @@ const deletePost = async (req, res) => {
       });
     }
 
-    // Only author or admin can delete
-    if (String(post.author_id) !== String(req.user.id) && req.user.role !== 'admin') {
+    // Author, tutor, or admin can delete
+    if (
+      String(post.author_id) !== String(req.user.id) &&
+      req.user.role !== 'admin' &&
+      req.user.role !== 'tutor'
+    ) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this post'
@@ -388,15 +392,182 @@ const upvoteReply = async (req, res) => {
   }
 };
 
+// Edit a post (author only)
+const editPost = async (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'content is required'
+      });
+    }
+
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    // Only author can edit their own post
+    if (String(post.author_id) !== String(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to edit this post'
+      });
+    }
+
+    post.content = content.trim();
+    post.is_edited = true;
+    await post.save();
+
+    return res.json({
+      success: true,
+      message: 'Post updated successfully',
+      data: { post }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to edit post',
+      error: error.message
+    });
+  }
+};
+
+// Edit a reply (author only)
+const editReply = async (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'content is required'
+      });
+    }
+
+    const reply = await Reply.findById(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reply not found'
+      });
+    }
+
+    // Only author can edit their own reply
+    if (String(reply.author_id) !== String(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to edit this reply'
+      });
+    }
+
+    reply.content = content.trim();
+    reply.is_edited = true;
+    await reply.save();
+
+    return res.json({
+      success: true,
+      message: 'Reply updated successfully',
+      data: { reply }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to edit reply',
+      error: error.message
+    });
+  }
+};
+
+// Create announcement (tutor only)
+const createAnnouncement = async (req, res) => {
+  try {
+    const { course_id, content } = req.body;
+
+    if (!course_id || !content) {
+      return res.status(400).json({
+        success: false,
+        message: 'course_id and content are required'
+      });
+    }
+
+    if (req.user.role !== 'tutor' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only tutors can create announcements'
+      });
+    }
+
+    // Create pinned announcement post
+    const post = await Post.create({
+      course_id,
+      author_id: String(req.user.id),
+      author_name: `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || req.user.email,
+      author_role: req.user.role,
+      content,
+      is_pinned: true,
+      is_announcement: true
+    });
+
+    // Get all enrolled students from EnrollmentService
+    try {
+      const enrollRes = await axios.get(
+        `${process.env.ENROLLMENT_SERVICE_URL}/course/${course_id}/students`
+      );
+      const studentIds = enrollRes.data?.data?.studentIds || [];
+
+      // Notify each enrolled student
+      const notifyPromises = studentIds.map(studentId =>
+        axios.post(
+          `${process.env.NOTIFICATION_SERVICE_URL}/api/notifications`,
+          {
+            user_id: String(studentId),
+            title: '📢 New Announcement',
+            message: `${req.user.first_name || 'Tutor'}: "${content.substring(0, 60)}..."`,
+            type: 'course',
+            link: `/student/courses/${course_id}`,
+            icon: '📢'
+          }
+        ).catch(err => console.error('Notify failed:', err.message))
+      );
+
+      await Promise.all(notifyPromises);
+      console.log(`Notified ${studentIds.length} students`);
+    } catch (err) {
+      console.error('Failed to get enrolled students:', err.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Announcement created successfully',
+      data: { post }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create announcement',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getPostsByCourse,
   deletePost,
+  editPost,
   upvotePost,
   pinPost,
   reportPost,
   createReply,
   getRepliesByPost,
   markBestAnswer,
-  upvoteReply
+  upvoteReply,
+  editReply,
+  createAnnouncement
 };

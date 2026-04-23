@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../context/AuthContext';
 import {
   Clock,
   Users,
@@ -9,7 +10,10 @@ import {
   CheckCircle,
   Lock,
   PlayCircle,
-  Award
+  Award,
+  Pencil,
+  X,
+  Check
 } from 'lucide-react';
 import {
   getCourseById,
@@ -22,7 +26,9 @@ import {
   createPost,
   createReply,
   getReplies,
-  upvotePost
+  upvotePost,
+  editPost,
+  editReply
 } from '../../api/discussions';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -32,6 +38,8 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 export function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserId = String(user?.id || user?._id || '');
   const tabSectionRef = useRef(null);
   const [course, setCourse] = useState(undefined);
   const [lessons, setLessons] = useState([]);
@@ -45,6 +53,10 @@ export function CourseDetail() {
   const [expandedPost, setExpandedPost] = useState(null);
   const [replies, setReplies] = useState({});
   const [newReplyContent, setNewReplyContent] = useState({});
+  const [editingPost, setEditingPost] = useState(null);
+  const [editPostContent, setEditPostContent] = useState('');
+  const [editingReply, setEditingReply] = useState(null);
+  const [editReplyContent, setEditReplyContent] = useState('');
 
   const enrolledCount = Number.isFinite(Number(course?.enrolledCount))
     ? Number(course.enrolledCount)
@@ -112,6 +124,41 @@ export function CourseDetail() {
     navigate(`/student/financial-aid/${id}`, {
       state: { courseTitle: course.title }
     });
+  };
+
+  const handleEditPost = async (postId) => {
+    if (!editPostContent.trim()) return;
+    try {
+      const updated = await editPost(postId, editPostContent);
+      setPosts(prev => prev.map(p =>
+        p._id === postId ? { ...p, content: updated.content, is_edited: true } : p
+      ));
+      setEditingPost(null);
+      setEditPostContent('');
+      toast.success('Post updated!');
+    } catch {
+      toast.error('Failed to update post');
+    }
+  };
+
+  const handleEditReply = async (replyId, postId) => {
+    if (!editReplyContent.trim()) return;
+    try {
+      const updated = await editReply(replyId, editReplyContent);
+      setReplies(prev => ({
+        ...prev,
+        [postId]: prev[postId].map(r =>
+          r._id === replyId
+            ? { ...r, content: updated.content, is_edited: true }
+            : r
+        )
+      }));
+      setEditingReply(null);
+      setEditReplyContent('');
+      toast.success('Reply updated!');
+    } catch {
+      toast.error('Failed to update reply');
+    }
   };
 
   if (isLoading)
@@ -389,18 +436,66 @@ export function CourseDetail() {
                             </p>
                           </div>
                         </div>
-                        {post.is_pinned && (
-                          <span className="text-xs bg-amber-100 text-amber-700 
-                              px-2 py-1 rounded-full font-medium">
-                            📌 Pinned
-                          </span>
-                        )}
+                        <div className="flex gap-2">
+                          {post.is_announcement && (
+                            <span className="text-xs bg-amber-100 text-amber-700 
+                                px-2 py-1 rounded-full font-medium">
+                              📢 Announcement
+                            </span>
+                          )}
+                          {post.is_pinned && !post.is_announcement && (
+                            <span className="text-xs bg-amber-100 text-amber-700 
+                                px-2 py-1 rounded-full font-medium">
+                              📌 Pinned
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Post Content */}
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {post.content}
-                      </p>
+                      {editingPost === post._id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editPostContent}
+                            onChange={(e) => setEditPostContent(e.target.value)}
+                            rows={3}
+                            className="w-full border border-indigo-300 rounded-lg 
+                              px-3 py-2 text-sm focus:outline-none 
+                              focus:ring-2 focus:ring-indigo-300"
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => {
+                                setEditingPost(null);
+                                setEditPostContent('');
+                              }}
+                              className="flex items-center gap-1 px-3 py-1.5 
+                                text-xs text-slate-600 border border-slate-300 
+                                rounded-lg hover:bg-slate-50"
+                            >
+                              <X className="h-3 w-3" /> Cancel
+                            </button>
+                            <button
+                              onClick={() => handleEditPost(post._id)}
+                              disabled={!editPostContent.trim()}
+                              className="flex items-center gap-1 px-3 py-1.5 
+                                text-xs text-white bg-indigo-600 
+                                rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              <Check className="h-3 w-3" /> Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-slate-700 text-sm leading-relaxed">
+                            {post.content}
+                          </p>
+                          {post.is_edited && (
+                            <span className="text-xs text-slate-400 italic">(edited)</span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Post Actions */}
                       <div className="flex items-center gap-4 pt-1">
@@ -414,6 +509,16 @@ export function CourseDetail() {
                             hover:text-indigo-600 transition"
                         >
                           👍 {post.upvotes?.length || 0}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingPost(post._id);
+                            setEditPostContent(post.content);
+                          }}
+                          className="flex items-center gap-1 text-xs text-slate-500 
+                            hover:text-indigo-600 transition"
+                        >
+                          <Pencil className="h-3 w-3" /> Edit
                         </button>
                         <button
                           onClick={async () => {
@@ -455,9 +560,59 @@ export function CourseDetail() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-600 mt-0.5">
-                                  {reply.content}
-                                </p>
+                                {editingReply === reply._id ? (
+                                  <div className="space-y-1 mt-1">
+                                    <input
+                                      type="text"
+                                      value={editReplyContent}
+                                      onChange={(e) => setEditReplyContent(e.target.value)}
+                                      className="w-full border border-indigo-300 rounded 
+                                        px-2 py-1 text-xs focus:outline-none 
+                                        focus:ring-1 focus:ring-indigo-300"
+                                    />
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => {
+                                          setEditingReply(null);
+                                          setEditReplyContent('');
+                                        }}
+                                        className="px-2 py-1 text-xs text-slate-500 
+                                          border border-slate-200 rounded hover:bg-slate-50"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleEditReply(reply._id, post._id)}
+                                        className="px-2 py-1 text-xs text-white 
+                                          bg-indigo-600 rounded hover:bg-indigo-700"
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="text-xs text-slate-600 mt-0.5">
+                                      {reply.content}
+                                    </p>
+                                    {reply.is_edited && (
+                                      <span className="text-xs text-slate-400 italic">(edited)</span>
+                                    )}
+                                    {/* Edit reply button — only for reply author */}
+                                    {String(reply.author_id) === currentUserId && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingReply(reply._id);
+                                          setEditReplyContent(reply.content);
+                                        }}
+                                        className="flex items-center gap-1 text-xs 
+                                          text-slate-400 hover:text-indigo-600 mt-1"
+                                      >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}

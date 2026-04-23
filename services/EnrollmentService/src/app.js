@@ -452,6 +452,29 @@ No explanation, no markdown, just the JSON array.
   }
 });
 
+// Get all student IDs enrolled in a course (internal use)
+app.get('/course/:courseId/students', async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      course_id: String(req.params.courseId),
+      status: { $ne: 'cancelled' }
+    }, { student_id: 1 });
+
+    const studentIds = enrollments.map(e => String(e.student_id));
+
+    return res.json({
+      success: true,
+      data: { studentIds }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
+      error: error.message
+    });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });

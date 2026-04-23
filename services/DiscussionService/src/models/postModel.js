@@ -10,6 +10,8 @@ const postSchema = new mongoose.Schema({
   is_pinned: { type: Boolean, default: false },
   is_flagged: { type: Boolean, default: false },
   is_deleted: { type: Boolean, default: false },
+  is_edited: { type: Boolean, default: false },
+  is_announcement: { type: Boolean, default: false },
   upvotes: [{ type: String }],
   reply_count: { type: Number, default: 0 }
 }, { timestamps: true });

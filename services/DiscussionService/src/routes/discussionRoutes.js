@@ -5,13 +5,16 @@ const {
   createPost,
   getPostsByCourse,
   deletePost,
+  editPost,
   upvotePost,
   pinPost,
   reportPost,
   createReply,
   getRepliesByPost,
   markBestAnswer,
-  upvoteReply
+  upvoteReply,
+  editReply,
+  createAnnouncement
 } = require('../controllers/discussionController');
 
 // ─── POST ROUTES ──────────────────────────────────────
@@ -24,6 +27,9 @@ router.post('/course/:courseId/posts', authMiddleware, createPost);
 
 // Delete a post
 router.delete('/posts/:postId', authMiddleware, deletePost);
+
+// Edit a post (author only)
+router.patch('/posts/:postId/edit', authMiddleware, editPost);
 
 // Upvote / un-upvote a post
 router.patch('/posts/:postId/upvote', authMiddleware, upvotePost);
@@ -45,7 +51,15 @@ router.post('/posts/:postId/replies', authMiddleware, createReply);
 // Mark reply as best answer (tutor/admin only)
 router.patch('/replies/:replyId/best', authMiddleware, markBestAnswer);
 
+// Edit a reply (author only)
+router.patch('/replies/:replyId/edit', authMiddleware, editReply);
+
 // Upvote / un-upvote a reply
 router.patch('/replies/:replyId/upvote', authMiddleware, upvoteReply);
+
+// ─── ANNOUNCEMENT ROUTES ──────────────────────────────
+
+// Create announcement (tutor only)
+router.post('/announcements', authMiddleware, createAnnouncement);
 
 module.exports = router;
