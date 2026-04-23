@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
@@ -287,6 +288,165 @@ app.patch('/:enrollmentId/progress', authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to update enrollment progress',
+      error: error.message
+    });
+  }
+});
+
+// AI Course Recommendations
+app.post('/recommendations', authMiddleware, async (req, res) => {
+  try {
+    const { enrolledCourses, learningGoal } = req.body;
+
+    // Fetch all available courses
+    let allCourses = [];
+    try {
+      const coursesRes = await axios.get(`${process.env.COURSE_SERVICE_URL}/`);
+      allCourses = coursesRes.data?.data?.courses || [];
+    } catch (courseErr) {
+      console.error('Course fetch failed:', courseErr.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch courses'
+      });
+    }
+
+    // Filter out enrolled courses
+    const enrolledIds = (enrolledCourses || []).map(c =>
+      String(c._id || c.id || c.course_id)
+    );
+    const availableCourses = allCourses.filter(
+      c => !enrolledIds.includes(String(c._id))
+    );
+
+    if (availableCourses.length === 0) {
+      return res.json({ success: true, data: { recommendations: [] } });
+    }
+
+    // Build course list for prompt
+    const availableSummary = availableCourses
+      .map((c, i) => 
+        `${i}. ${c.title} | ${c.category} | ${c.level} | ${c.description?.substring(0, 60) || ''}`
+      )
+      .join('\n');
+
+    // Build prompt based on learningGoal or enrolled courses
+    const prompt = learningGoal
+      ? `
+You are a course recommendation AI for EduFlex LMS.
+
+Student wants to learn: "${learningGoal}"
+
+Available courses (index. title | category | level | description):
+${availableSummary}
+
+Based on what the student wants to learn, recommend exactly 3 most relevant courses.
+Respond ONLY with a JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
+`
+      : `
+You are a course recommendation AI for EduFlex LMS.
+
+Student is enrolled in: ${(enrolledCourses || []).map(c => c.title).join(', ')}
+
+Available courses (index. title | category | level | description):
+${availableSummary}
+
+Recommend exactly 3 courses that match student learning path.
+Respond ONLY with JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
+`;
+
+    // Call Gemini API
+    let indices = [0, 1, 2]; // default fallback
+    try {
+      const geminiRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: prompt }] }] }
+      );
+
+      const rawText = geminiRes.data?.candidates?.[0]
+        ?.content?.parts?.[0]?.text || '[]';
+
+      const cleanText = rawText
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+
+      try {
+        indices = JSON.parse(cleanText);
+        console.log('AI indices:', indices);
+      } catch {
+        console.log('Parse failed, using fallback');
+        indices = [0, 1, 2];
+      }
+    } catch (geminiErr) {
+      console.error('Gemini failed:', geminiErr.message);
+
+      let fallbackCourses;
+
+      if (learningGoal) {
+        // Extract individual keywords from the learning goal
+        const keywords = learningGoal.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '') // remove special chars
+          .split(' ')
+          .filter(word => word.length > 2) // ignore short words like "i", "to"
+          .filter(word => !['want', 'learn', 'lean', 'need', 
+            'know', 'study', 'about', 'with', 'and', 'the', 
+            'for', 'how'].includes(word)); // ignore common words
+
+        console.log('Search keywords:', keywords);
+
+        const matched = availableCourses.filter(c => {
+          const searchText = [
+            c.title,
+            c.description,
+            c.category,
+            c.level
+          ].join(' ').toLowerCase();
+
+          // Match if ANY keyword found
+          return keywords.some(keyword => searchText.includes(keyword));
+        });
+
+        console.log('Matched courses:', matched.map(c => c.title));
+
+        fallbackCourses = matched.length > 0
+          ? matched.slice(0, 3)
+          : availableCourses.sort(() => Math.random() - 0.5).slice(0, 3);
+      } else {
+        fallbackCourses = [...availableCourses]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3);
+      }
+
+      return res.json({
+        success: true,
+        data: { recommendations: fallbackCourses }
+      });
+    }
+
+    // Shuffle available courses for variety
+    const shuffledAvailable = [...availableCourses]
+      .sort(() => Math.random() - 0.5);
+
+    const recommendations = indices
+      .filter(i => i >= 0 && i < availableCourses.length)
+      .map(i => availableCourses[i])
+      .slice(0, 3);
+
+    console.log('Recommendations:', recommendations.map(r => r.title));
+
+    return res.json({
+      success: true,
+      data: { recommendations }
+    });
+
+  } catch (error) {
+    console.error('Recommendations error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get recommendations',
       error: error.message
     });
   }
