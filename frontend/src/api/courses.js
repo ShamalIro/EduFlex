@@ -157,10 +157,11 @@ export const getAdminCourseStats = async () => {
 };
 
 // AI Course Recommendations
-export const getAIRecommendations = async (enrolledCourses) => {
+export const getAIRecommendations = async (enrolledCourses, learningGoal = '') => {
   try {
     const res = await courseClient.post('/grades/recommendations', {
-      enrolledCourses
+      enrolledCourses,
+      learningGoal
     });
     return res.data.data.recommendations || [];
   } catch (error) {

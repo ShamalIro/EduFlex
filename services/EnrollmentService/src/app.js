@@ -296,104 +296,146 @@ app.patch('/:enrollmentId/progress', authMiddleware, async (req, res) => {
 // AI Course Recommendations
 app.post('/recommendations', authMiddleware, async (req, res) => {
   try {
-    console.log('=== RECOMMENDATIONS START ===');
-    const { enrolledCourses } = req.body;
-    console.log('Enrolled courses received:', enrolledCourses?.length);
+    const { enrolledCourses, learningGoal } = req.body;
 
-    if (!enrolledCourses || enrolledCourses.length === 0) {
-      return res.json({ success: true, data: { recommendations: [] } });
-    }
-
-    // Step 1 - Fetch courses
-    console.log('Step 1: Fetching courses from:', process.env.COURSE_SERVICE_URL);
+    // Fetch all available courses
     let allCourses = [];
     try {
-      const coursesRes = await axios.get(
-        `${process.env.COURSE_SERVICE_URL}/`
-      );
+      const coursesRes = await axios.get(`${process.env.COURSE_SERVICE_URL}/`);
       allCourses = coursesRes.data?.data?.courses || [];
-      console.log('Step 1 SUCCESS: courses fetched:', allCourses.length);
     } catch (courseErr) {
-      console.error('Step 1 FAILED:', courseErr.message);
-      throw courseErr;
+      console.error('Course fetch failed:', courseErr.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch courses'
+      });
     }
 
-    // Filter enrolled
-    const enrolledIds = enrolledCourses.map(c =>
+    // Filter out enrolled courses
+    const enrolledIds = (enrolledCourses || []).map(c =>
       String(c._id || c.id || c.course_id)
     );
     const availableCourses = allCourses.filter(
       c => !enrolledIds.includes(String(c._id))
     );
-    console.log('Available courses after filter:', availableCourses.length);
 
     if (availableCourses.length === 0) {
       return res.json({ success: true, data: { recommendations: [] } });
     }
 
-    // Step 2 - Call Gemini
-    console.log('Step 2: Calling Gemini API...');
-    const enrolledSummary = enrolledCourses
-      .map(c => `${c.title} (${c.category || 'General'})`)
-      .join(', ');
-
+    // Build course list for prompt
     const availableSummary = availableCourses
-      .map((c, i) => `${i}. ${c.title} | ${c.category} | ${c.level}`)
+      .map((c, i) => 
+        `${i}. ${c.title} | ${c.category} | ${c.level} | ${c.description?.substring(0, 60) || ''}`
+      )
       .join('\n');
 
-    const prompt = `
+    // Build prompt based on learningGoal or enrolled courses
+    const prompt = learningGoal
+      ? `
 You are a course recommendation AI for EduFlex LMS.
-Student enrolled in: ${enrolledSummary}
-Available courses:
+
+Student wants to learn: "${learningGoal}"
+
+Available courses (index. title | category | level | description):
 ${availableSummary}
-Recommend exactly 3 courses. Respond ONLY with JSON array of indices like [0,1,2]
+
+Based on what the student wants to learn, recommend exactly 3 most relevant courses.
+Respond ONLY with a JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
+`
+      : `
+You are a course recommendation AI for EduFlex LMS.
+
+Student is enrolled in: ${(enrolledCourses || []).map(c => c.title).join(', ')}
+
+Available courses (index. title | category | level | description):
+${availableSummary}
+
+Recommend exactly 3 courses that match student learning path.
+Respond ONLY with JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
 `;
 
-    let geminiRes;
+    // Call Gemini API
+    let indices = [0, 1, 2]; // default fallback
     try {
-      geminiRes = await axios.post(
+      const geminiRes = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
         { contents: [{ parts: [{ text: prompt }] }] }
       );
-      console.log('Step 2 SUCCESS: Gemini responded');
+
+      const rawText = geminiRes.data?.candidates?.[0]
+        ?.content?.parts?.[0]?.text || '[]';
+
+      const cleanText = rawText
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+
+      try {
+        indices = JSON.parse(cleanText);
+        console.log('AI indices:', indices);
+      } catch {
+        console.log('Parse failed, using fallback');
+        indices = [0, 1, 2];
+      }
     } catch (geminiErr) {
-      console.error('Step 2 FAILED - Gemini error:', geminiErr.message);
-      // Fallback — return first 3 available courses
-      console.log('Using fallback recommendations...');
-      const fallback = availableCourses.slice(0, 3);
+      console.error('Gemini failed:', geminiErr.message);
+
+      let fallbackCourses;
+
+      if (learningGoal) {
+        // Extract individual keywords from the learning goal
+        const keywords = learningGoal.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '') // remove special chars
+          .split(' ')
+          .filter(word => word.length > 2) // ignore short words like "i", "to"
+          .filter(word => !['want', 'learn', 'lean', 'need', 
+            'know', 'study', 'about', 'with', 'and', 'the', 
+            'for', 'how'].includes(word)); // ignore common words
+
+        console.log('Search keywords:', keywords);
+
+        const matched = availableCourses.filter(c => {
+          const searchText = [
+            c.title,
+            c.description,
+            c.category,
+            c.level
+          ].join(' ').toLowerCase();
+
+          // Match if ANY keyword found
+          return keywords.some(keyword => searchText.includes(keyword));
+        });
+
+        console.log('Matched courses:', matched.map(c => c.title));
+
+        fallbackCourses = matched.length > 0
+          ? matched.slice(0, 3)
+          : availableCourses.sort(() => Math.random() - 0.5).slice(0, 3);
+      } else {
+        fallbackCourses = [...availableCourses]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3);
+      }
+
       return res.json({
         success: true,
-        data: { recommendations: fallback }
+        data: { recommendations: fallbackCourses }
       });
     }
 
-    // Step 3 - Parse response
-    console.log('Step 3: Parsing Gemini response...');
-    const rawText = geminiRes.data?.candidates?.[0]
-      ?.content?.parts?.[0]?.text || '[]';
-    console.log('Raw Gemini text:', rawText);
-
-    const cleanText = rawText
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim();
-
-    let indices = [];
-    try {
-      indices = JSON.parse(cleanText);
-      console.log('Parsed indices:', indices);
-    } catch {
-      console.log('Parse failed, using fallback [0,1,2]');
-      indices = [0, 1, 2];
-    }
+    // Shuffle available courses for variety
+    const shuffledAvailable = [...availableCourses]
+      .sort(() => Math.random() - 0.5);
 
     const recommendations = indices
       .filter(i => i >= 0 && i < availableCourses.length)
       .map(i => availableCourses[i])
       .slice(0, 3);
 
-    console.log('Final recommendations:', recommendations.map(r => r.title));
-    console.log('=== RECOMMENDATIONS END ===');
+    console.log('Recommendations:', recommendations.map(r => r.title));
 
     return res.json({
       success: true,
@@ -401,7 +443,7 @@ Recommend exactly 3 courses. Respond ONLY with JSON array of indices like [0,1,2
     });
 
   } catch (error) {
-    console.error('FINAL ERROR:', error.message);
+    console.error('Recommendations error:', error.message);
     return res.status(500).json({
       success: false,
       message: 'Failed to get recommendations',
