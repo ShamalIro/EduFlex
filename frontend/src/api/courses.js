@@ -155,3 +155,16 @@ export const getAdminCourseStats = async () => {
   const res = await courseClient.get('/courses/admin/stats');
   return res.data;
 };
+
+// AI Course Recommendations
+export const getAIRecommendations = async (enrolledCourses) => {
+  try {
+    const res = await courseClient.post('/grades/recommendations', {
+      enrolledCourses
+    });
+    return res.data.data.recommendations || [];
+  } catch (error) {
+    console.error('Recommendations error:', error);
+    return [];
+  }
+};

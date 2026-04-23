@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
@@ -287,6 +288,123 @@ app.patch('/:enrollmentId/progress', authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to update enrollment progress',
+      error: error.message
+    });
+  }
+});
+
+// AI Course Recommendations
+app.post('/recommendations', authMiddleware, async (req, res) => {
+  try {
+    console.log('=== RECOMMENDATIONS START ===');
+    const { enrolledCourses } = req.body;
+    console.log('Enrolled courses received:', enrolledCourses?.length);
+
+    if (!enrolledCourses || enrolledCourses.length === 0) {
+      return res.json({ success: true, data: { recommendations: [] } });
+    }
+
+    // Step 1 - Fetch courses
+    console.log('Step 1: Fetching courses from:', process.env.COURSE_SERVICE_URL);
+    let allCourses = [];
+    try {
+      const coursesRes = await axios.get(
+        `${process.env.COURSE_SERVICE_URL}/`
+      );
+      allCourses = coursesRes.data?.data?.courses || [];
+      console.log('Step 1 SUCCESS: courses fetched:', allCourses.length);
+    } catch (courseErr) {
+      console.error('Step 1 FAILED:', courseErr.message);
+      throw courseErr;
+    }
+
+    // Filter enrolled
+    const enrolledIds = enrolledCourses.map(c =>
+      String(c._id || c.id || c.course_id)
+    );
+    const availableCourses = allCourses.filter(
+      c => !enrolledIds.includes(String(c._id))
+    );
+    console.log('Available courses after filter:', availableCourses.length);
+
+    if (availableCourses.length === 0) {
+      return res.json({ success: true, data: { recommendations: [] } });
+    }
+
+    // Step 2 - Call Gemini
+    console.log('Step 2: Calling Gemini API...');
+    const enrolledSummary = enrolledCourses
+      .map(c => `${c.title} (${c.category || 'General'})`)
+      .join(', ');
+
+    const availableSummary = availableCourses
+      .map((c, i) => `${i}. ${c.title} | ${c.category} | ${c.level}`)
+      .join('\n');
+
+    const prompt = `
+You are a course recommendation AI for EduFlex LMS.
+Student enrolled in: ${enrolledSummary}
+Available courses:
+${availableSummary}
+Recommend exactly 3 courses. Respond ONLY with JSON array of indices like [0,1,2]
+`;
+
+    let geminiRes;
+    try {
+      geminiRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: prompt }] }] }
+      );
+      console.log('Step 2 SUCCESS: Gemini responded');
+    } catch (geminiErr) {
+      console.error('Step 2 FAILED - Gemini error:', geminiErr.message);
+      // Fallback — return first 3 available courses
+      console.log('Using fallback recommendations...');
+      const fallback = availableCourses.slice(0, 3);
+      return res.json({
+        success: true,
+        data: { recommendations: fallback }
+      });
+    }
+
+    // Step 3 - Parse response
+    console.log('Step 3: Parsing Gemini response...');
+    const rawText = geminiRes.data?.candidates?.[0]
+      ?.content?.parts?.[0]?.text || '[]';
+    console.log('Raw Gemini text:', rawText);
+
+    const cleanText = rawText
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+
+    let indices = [];
+    try {
+      indices = JSON.parse(cleanText);
+      console.log('Parsed indices:', indices);
+    } catch {
+      console.log('Parse failed, using fallback [0,1,2]');
+      indices = [0, 1, 2];
+    }
+
+    const recommendations = indices
+      .filter(i => i >= 0 && i < availableCourses.length)
+      .map(i => availableCourses[i])
+      .slice(0, 3);
+
+    console.log('Final recommendations:', recommendations.map(r => r.title));
+    console.log('=== RECOMMENDATIONS END ===');
+
+    return res.json({
+      success: true,
+      data: { recommendations }
+    });
+
+  } catch (error) {
+    console.error('FINAL ERROR:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get recommendations',
       error: error.message
     });
   }

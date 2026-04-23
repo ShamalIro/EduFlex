@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle, Award, Clock } from 'lucide-react';
+import { BookOpen, CheckCircle, Award, Clock, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { getEnrolledCourses } from '../../api/courses';
+import { getEnrolledCourses, getAIRecommendations } from '../../api/courses';
 import { StatsCard } from '../../components/shared/StatsCard';
 import { CourseCard } from '../../components/shared/CourseCard';
 import { Button } from '../../components/ui/Button';
@@ -12,6 +12,8 @@ export function StudentDashboard() {
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [recommendations, setRecommendations] = useState([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,14 @@ export function StudentDashboard() {
       try {
         const data = await getEnrolledCourses();
         setCourses(data);
+
+        // Get AI recommendations
+        if (data.length > 0) {
+          setLoadingRecs(true);
+          const recs = await getAIRecommendations(data);
+          setRecommendations(recs);
+          setLoadingRecs(false);
+        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -152,6 +162,45 @@ export function StudentDashboard() {
           </div>
         )}
       </motion.div>
+
+      {/* AI Recommendations Section */}
+      {(recommendations.length > 0 || loadingRecs) && (
+        <motion.div variants={item}>
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-slate-900">
+              Recommended For You
+            </h2>
+            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+              ✨ AI Powered
+            </span>
+          </div>
+
+          {loadingRecs ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-64 bg-slate-100 rounded-lg animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendations.map((course) => (
+                <CourseCard
+                  key={course._id}
+                  course={course}
+                  isEnrolled={false}
+                  onEnroll={() =>
+                    navigate(`/student/courses/${course._id}`)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Recent Activity & Upcoming */}
       <motion.div
