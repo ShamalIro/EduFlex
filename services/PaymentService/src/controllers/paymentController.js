@@ -72,7 +72,8 @@ const confirmPayment = async (req, res) => {
         title: 'Payment Successful! 🎉',
         message: `You are now enrolled in ${payment.course_title}`,
         type: 'payment',
-        icon: '💳'
+        icon: '💳',
+        link: '/student/my-courses' // ✅ Added
       });
       console.log(`✅ Notification created for user ${req.user.id}`);
     } catch (notifError) {
