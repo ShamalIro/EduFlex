@@ -2,8 +2,10 @@ const Assignment = require('../models/Assignment');
 const Quiz = require('../models/Quiz');
 const AssignmentSubmission = require('../models/AssignmentSubmission');
 const QuizAttempt = require('../models/QuizAttempt');
+const axios = require('axios'); // ✅ Added
 
 const ENROLLMENT_SERVICE_URL = (process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004').replace(/\/$/, '');
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006'; // ✅ Added
 
 const canModify = (ownerId, user) => user.role === 'admin' || String(ownerId) === String(user.id);
 
@@ -206,6 +208,30 @@ const syncEnrollmentProgress = async (req, courseId, studentId) => {
   }).then(parseJson);
 };
 
+// ✅ Added - Send notification to enrolled students
+const sendNotificationToEnrolledStudents = async (courseId, title, message, type, icon) => {
+  try {
+    const studentsRes = await fetch(
+      `${ENROLLMENT_SERVICE_URL}/internal/students/${courseId}`
+    );
+    const studentsData = await studentsRes.json();
+    const studentIds = studentsData?.data?.studentIds || [];
+
+    for (const studentId of studentIds) {
+      await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications`, {
+        user_id: String(studentId),
+        title,
+        message,
+        type,
+        icon
+      });
+    }
+    console.log(`✅ Notifications sent to ${studentIds.length} students`);
+  } catch (error) {
+    console.error('Notification error:', error.message);
+  }
+};
+
 const getCourseAssignments = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -245,7 +271,6 @@ const createAssignment = async (req, res) => {
       });
     }
 
-    // Process rubric to add order if not present
     const processedRubric = (rubric || []).map((criterion, index) => ({
       ...criterion,
       order: criterion.order ?? index
@@ -264,6 +289,15 @@ const createAssignment = async (req, res) => {
       rubric: processedRubric,
       status: status || 'published'
     });
+
+    // ✅ Added - Send notification to enrolled students
+    await sendNotificationToEnrolledStudents(
+      courseId,
+      '📝 New Assignment Added!',
+      `A new assignment "${title}" has been added. Please complete before the deadline!`,
+      'assignment',
+      '📝'
+    );
 
     res.status(201).json({
       success: true,
@@ -321,7 +355,6 @@ const updateAssignment = async (req, res) => {
         if (field === 'maxPoints') {
           assignment[field] = Number(req.body[field]);
         } else if (field === 'rubric') {
-          // Process rubric to add order
           assignment[field] = req.body[field].map((criterion, index) => ({
             ...criterion,
             order: criterion.order ?? index
@@ -428,7 +461,6 @@ const createQuiz = async (req, res) => {
       });
     }
 
-    // Process questions to add order if not present
     const processedQuestions = (questions || []).map((q, index) => ({
       ...q,
       order: q.order ?? index
@@ -447,6 +479,15 @@ const createQuiz = async (req, res) => {
       showCorrectAnswers: showCorrectAnswers !== false,
       status: status || 'published'
     });
+
+    // ✅ Added - Send notification to enrolled students
+    await sendNotificationToEnrolledStudents(
+      courseId,
+      '🎯 New Quiz Available!',
+      `A new quiz "${title}" has been added. Test your knowledge now!`,
+      'assignment',
+      '🎯'
+    );
 
     res.status(201).json({
       success: true,
@@ -504,7 +545,6 @@ const updateQuiz = async (req, res) => {
         if (['timeLimit', 'totalPoints'].includes(field)) {
           quiz[field] = Number(req.body[field]);
         } else if (field === 'questions') {
-          // Process questions to add order
           quiz[field] = req.body[field].map((q, index) => ({
             ...q,
             order: q.order ?? index

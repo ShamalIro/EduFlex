@@ -1,4 +1,8 @@
 const Course = require('../models/courseModel');
+const axios = require('axios'); // ✅ Added
+
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006'; // ✅ Added
+const ENROLLMENT_SERVICE_URL = (process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004').replace(/\/$/, ''); // ✅ Added
 
 const resolveTutorId = (user = {}) => {
   const raw = user.id ?? user.user_id ?? user.sub;
@@ -14,6 +18,22 @@ const resolveTutorName = (user = {}) => {
     return user.email.split('@')[0];
   }
   return 'Tutor';
+};
+
+// ✅ Added - Send notification to all students
+const sendNewCourseNotification = async (courseTitle, category) => {
+  try {
+    await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications`, {
+      user_id: 'all',
+      title: '🆕 New Course Available!',
+      message: `A new ${category} course "${courseTitle}" has been added. Check it out now!`,
+      type: 'course',
+      icon: '📚'
+    });
+    console.log(`✅ New course notification sent`);
+  } catch (error) {
+    console.error('Course notification error:', error.message);
+  }
 };
 
 // Create course (tutor only)
@@ -47,6 +67,9 @@ const createCourse = async (req, res) => {
       tutor_id: tutorId,
       tutor_name: resolveTutorName(req.user)
     });
+
+    // ✅ Added - Send new course notification
+    await sendNewCourseNotification(title, category);
 
     res.status(201).json({
       success: true,

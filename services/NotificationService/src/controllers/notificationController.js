@@ -4,7 +4,12 @@ const Notification = require('../models/notificationModel');
 const getNotifications = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const notifications = await Notification.find({ user_id })
+    const notifications = await Notification.find({
+      $or: [
+        { user_id: String(user_id) },
+        { user_id: 'all' } // ✅ Added - All users notifications
+      ]
+    })
       .sort({ createdAt: -1 })
       .limit(20);
 
@@ -23,7 +28,13 @@ const getNotifications = async (req, res) => {
 const getUnreadCount = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const count = await Notification.countDocuments({ user_id, is_read: false });
+    const count = await Notification.countDocuments({
+      $or: [
+        { user_id: String(user_id) },
+        { user_id: 'all' } // ✅ Added - All users notifications
+      ],
+      is_read: false
+    });
 
     res.status(200).json({
       success: true,
@@ -42,7 +53,7 @@ const markAsRead = async (req, res) => {
     const user_id = req.user.id;
 
     const notification = await Notification.findOneAndUpdate(
-      { _id: id, user_id },
+      { _id: id, $or: [{ user_id: String(user_id) }, { user_id: 'all' }] },
       { is_read: true },
       { new: true }
     );
@@ -67,7 +78,10 @@ const markAllAsRead = async (req, res) => {
     const user_id = req.user.id;
 
     await Notification.updateMany(
-      { user_id, is_read: false },
+      {
+        $or: [{ user_id: String(user_id) }, { user_id: 'all' }],
+        is_read: false
+      },
       { is_read: true }
     );
 
@@ -87,7 +101,10 @@ const deleteNotification = async (req, res) => {
     const { id } = req.params;
     const user_id = req.user.id;
 
-    await Notification.findOneAndDelete({ _id: id, user_id });
+    await Notification.findOneAndDelete({
+      _id: id,
+      $or: [{ user_id: String(user_id) }, { user_id: 'all' }]
+    });
 
     res.status(200).json({
       success: true,
