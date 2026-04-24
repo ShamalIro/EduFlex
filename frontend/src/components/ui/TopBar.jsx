@@ -13,7 +13,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ✅ Fetch notifications
   const fetchNotifications = async () => {
     try {
       const res = await client.get('/notifications');
@@ -23,7 +22,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
     }
   };
 
-  // ✅ Fetch unread count
   const fetchUnreadCount = async () => {
     try {
       const res = await client.get('/notifications/unread-count');
@@ -41,7 +39,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
     }
   }, [user]);
 
-  // ✅ Mark as read
   const markAsRead = async (id) => {
     try {
       await client.put(`/notifications/${id}/read`);
@@ -54,7 +51,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
     }
   };
 
-  // ✅ Mark all as read
   const markAllAsRead = async () => {
     try {
       await client.put('/notifications/mark-all-read');
@@ -65,7 +61,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
     }
   };
 
-  // ✅ Delete notification
   const deleteNotification = async (id) => {
     try {
       await client.delete(`/notifications/${id}`);
@@ -81,6 +76,15 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
     setShowCart(false);
     if (!showNotifications) {
       fetchNotifications();
+    }
+  };
+
+  // ✅ Added - Handle notification click
+  const handleNotificationClick = (n) => {
+    if (!n.is_read) markAsRead(n._id);
+    if (n.link) {
+      navigate(n.link);
+      setShowNotifications(false);
     }
   };
 
@@ -209,10 +213,8 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
             )}
           </button>
 
-          {/* ✅ Notification Dropdown */}
           {showNotifications && (
             <div className="absolute right-0 top-12 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50">
-              {/* Header */}
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-semibold text-slate-800">Notifications</h3>
                 {unreadCount > 0 && (
@@ -225,7 +227,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
                 )}
               </div>
 
-              {/* Notification List */}
               {notifications.length === 0 ? (
                 <div className="p-8 text-center">
                   <Bell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
@@ -240,13 +241,15 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
                         !n.is_read ? 'bg-blue-50' : ''
                       }`}
                     >
-                      {/* Icon */}
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-lg">
                         {n.icon || '🔔'}
                       </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0" onClick={() => !n.is_read && markAsRead(n._id)}>
+                      {/* ✅ Updated - click → navigate */}
+                      <div
+                        className={`flex-1 min-w-0 ${n.link ? 'cursor-pointer' : ''}`}
+                        onClick={() => handleNotificationClick(n)}
+                      >
                         <p className={`text-sm font-medium text-slate-800 ${!n.is_read ? 'font-semibold' : ''}`}>
                           {n.title}
                         </p>
@@ -254,13 +257,15 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
                         <p className="text-xs text-slate-400 mt-1">{getTimeAgo(n.createdAt)}</p>
                       </div>
 
-                      {/* Unread dot + Delete */}
                       <div className="flex flex-col items-end gap-2">
                         {!n.is_read && (
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                         )}
                         <button
-                          onClick={() => deleteNotification(n._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(n._id);
+                          }}
                           className="text-slate-300 hover:text-red-400 transition"
                         >
                           <X className="h-3 w-3" />
@@ -271,7 +276,6 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
                 </div>
               )}
 
-              {/* Footer */}
               <div className="p-3 border-t border-slate-100 text-center">
                 <button className="text-xs text-blue-600 hover:underline">
                   View all notifications
