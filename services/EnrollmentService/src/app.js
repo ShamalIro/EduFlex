@@ -115,19 +115,15 @@ app.post('/', authMiddleware, async (req, res) => {
       status: 'active'
     });
 
-    // ✅ Added - Send enrollment notification
-    try {
-      await axios.post('http://localhost:4006/api/notifications', {
-        user_id: String(req.user.id),
-        title: '🎉 Enrollment Successful!',
-        message: 'You have successfully enrolled in a new course. Start learning now!',
-        type: 'enrollment',
-        icon: '🎓'
-      });
-      console.log(`✅ Notification sent to user ${req.user.id}`);
-    } catch (notifError) {
-      console.error('Notification error:', notifError.message);
-    }
+   //
+   await axios.post('http://localhost:4006/api/notifications', {
+  user_id: String(req.user.id),
+  title: '🎉 Enrollment Successful!',
+  message: 'You have successfully enrolled in a new course. Start learning now!',
+  type: 'enrollment',
+  icon: '🎓',
+  link: '/student/my-courses' // ✅ Added
+});
 
     return res.status(201).json({
       success: true,
