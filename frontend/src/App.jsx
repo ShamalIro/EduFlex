@@ -47,6 +47,7 @@ import { UserManagement } from './pages/admin/UserManagement';
 import { PendingTutors } from './pages/admin/PendingTutors';
 import AdminCourseManagement from './pages/admin/AdminCourseManagement';
 import AdminCourseDetail from './pages/admin/AdminCourseDetail';
+import { AdminReports } from './pages/admin/AdminReports';
 
 export function App() {
   return (
@@ -155,7 +156,7 @@ export function App() {
             <Route path="pending-tutors" element={<PendingTutors />} />
             <Route path="courses" element={<AdminCourseManagement />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
-            <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
+            <Route path="reports" element={<AdminReports />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
