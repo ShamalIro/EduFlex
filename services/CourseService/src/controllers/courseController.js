@@ -28,7 +28,8 @@ const sendNewCourseNotification = async (courseTitle, category) => {
       title: '🆕 New Course Available!',
       message: `A new ${category} course "${courseTitle}" has been added. Check it out now!`,
       type: 'course',
-      icon: '📚'
+      icon: '📚',
+      link: '/student/courses' // ✅ Added
     });
     console.log(`✅ New course notification sent`);
   } catch (error) {
