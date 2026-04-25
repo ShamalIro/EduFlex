@@ -334,4 +334,4 @@ export function LessonViewer() {
       )}
     </div>
   );
-}g
+}
