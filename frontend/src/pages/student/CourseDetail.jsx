@@ -62,13 +62,23 @@ export function CourseDetail() {
   useEffect(() => {
     const fetchData = async () => {
       if (id) {
-        const courseData = await getCourseById(id);
-        const lessonsData = await getCourseLessons(id);
-        const enrollmentData = await getEnrollmentStatus(id);
-        setCourse(courseData);
-        setLessons(lessonsData);
-        setIsEnrolled(Boolean(enrollmentData?.isEnrolled));
-        setIsLoading(false);
+        try {
+          const courseData = await getCourseById(id);
+          const enrollmentData = await getEnrollmentStatus(id);
+          setCourse(courseData);
+
+          // ✅ FIX: Use lessons from courseData directly (they have _id & lessonTitle)
+          const rawLessons = courseData?.lessons || [];
+          const sorted = [...rawLessons].sort(
+            (a, b) => (a.lessonNumber || 0) - (b.lessonNumber || 0)
+          );
+          setLessons(sorted);
+          setIsEnrolled(Boolean(enrollmentData?.isEnrolled));
+        } catch (err) {
+          console.error('Failed to load course:', err);
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     fetchData();
@@ -90,7 +100,6 @@ export function CourseDetail() {
 
   const handleEnroll = async () => {
     if (!id || isEnrolled) return;
-    
     if (course.is_free) {
       await handleEnrollFree();
     } else {
@@ -112,6 +121,11 @@ export function CourseDetail() {
     navigate(`/student/financial-aid/${id}`, {
       state: { courseTitle: course.title }
     });
+  };
+
+  // ✅ FIX: Navigate with courseId + lessonId (matches LessonViewer route)
+  const goToLesson = (lesson) => {
+    navigate(`/student/courses/${id}/lessons/${lesson._id}`);
   };
 
   if (isLoading)
@@ -185,24 +199,24 @@ export function CourseDetail() {
           <div className="flex gap-3 w-full md:w-auto">
             {isEnrolled ? (
               <>
+                {/* ✅ FIX: Correct navigation to first lesson */}
                 <Button
                   size="lg"
                   className="w-full md:w-auto"
-                  onClick={() => navigate(`/student/lessons/${lessons[0]?.id}`)}
+                  onClick={() => lessons[0] && goToLesson(lessons[0])}
                 >
                   Continue Learning
                 </Button>
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="w-full md:w-auto border-purple-300 
-                    text-purple-700 hover:bg-purple-50"
+                  className="w-full md:w-auto border-purple-300 text-purple-700 hover:bg-purple-50"
                   onClick={() => {
                     setActiveTab('q&a');
                     setTimeout(() => {
-                      tabSectionRef.current?.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start' 
+                      tabSectionRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
                       });
                     }, 100);
                   }}
@@ -215,8 +229,8 @@ export function CourseDetail() {
                 onClick={handleEnroll}
                 disabled={isEnrolling}
                 className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
-                  course.is_free 
-                    ? 'bg-green-600 hover:bg-green-700' 
+                  course.is_free
+                    ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
@@ -269,42 +283,54 @@ export function CourseDetail() {
               </div>
             )}
 
+            {/* ✅ FIX: Lessons tab now uses _id and lessonTitle */}
             {activeTab === 'lessons' && (
               <div className="space-y-4 animate-in fade-in duration-300">
-                {lessons.map((lesson, idx) => (
-                  <div
-                    key={lesson.id}
-                    className={`flex items-center p-4 rounded-lg border transition-colors
-                      ${isEnrolled
-                        ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer'
-                        : 'bg-slate-50 border-slate-200 opacity-75'
-                      }`}
-                    onClick={() => isEnrolled && navigate(`/student/lessons/${lesson.id}`)}
-                  >
-                    <div className="flex-shrink-0 mr-4">
-                      {lesson.completed ? (
-                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                          <CheckCircle className="h-5 w-5" />
-                        </div>
-                      ) : isEnrolled ? (
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                          <PlayCircle className="h-5 w-5" />
-                        </div>
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
-                          <Lock className="h-4 w-4" />
-                        </div>
+                {lessons.length === 0 ? (
+                  <div className="text-center py-16 text-slate-400">
+                    <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-lg font-medium">No lessons yet</p>
+                    <p className="text-sm mt-1">The tutor hasn't added lessons to this course yet.</p>
+                  </div>
+                ) : (
+                  lessons.map((lesson, idx) => (
+                    <div
+                      key={lesson._id}
+                      className={`flex items-center p-4 rounded-lg border transition-colors
+                        ${isEnrolled
+                          ? 'bg-white border-slate-200 hover:border-indigo-300 cursor-pointer'
+                          : 'bg-slate-50 border-slate-200 opacity-75'
+                        }`}
+                      onClick={() => isEnrolled && goToLesson(lesson)}
+                    >
+                      <div className="flex-shrink-0 mr-4">
+                        {isEnrolled ? (
+                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <PlayCircle className="h-5 w-5" />
+                          </div>
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                            <Lock className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        {/* ✅ FIX: lessonNumber + lessonTitle instead of title */}
+                        <h4 className="text-sm font-medium text-slate-900">
+                          {lesson.lessonNumber || idx + 1}. {lesson.lessonTitle || 'Untitled Lesson'}
+                        </h4>
+                        {lesson.lessonDescription && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                            {lesson.lessonDescription}
+                          </p>
+                        )}
+                      </div>
+                      {isEnrolled && (
+                        <Button variant="ghost" size="sm">Start</Button>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-900">{idx + 1}. {lesson.title}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{lesson.duration}</p>
-                    </div>
-                    {isEnrolled && (
-                      <Button variant="ghost" size="sm">Start</Button>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
@@ -314,20 +340,15 @@ export function CourseDetail() {
 
             {activeTab === 'q&a' && (
               <div className="space-y-6 animate-in fade-in duration-300">
-
-                {/* Ask Question Box */}
                 {isEnrolled ? (
                   <div className="bg-white border border-slate-200 rounded-xl p-4">
-                    <h4 className="font-semibold text-slate-800 mb-3">
-                      Ask a Question
-                    </h4>
+                    <h4 className="font-semibold text-slate-800 mb-3">Ask a Question</h4>
                     <textarea
                       value={newPostContent}
                       onChange={(e) => setNewPostContent(e.target.value)}
                       placeholder="What would you like to ask about this course?"
                       rows={3}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 
-                        text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
                     />
                     <div className="flex justify-end mt-2">
                       <button
@@ -346,21 +367,18 @@ export function CourseDetail() {
                             setIsPostingQuestion(false);
                           }
                         }}
-                        className="px-4 py-2 bg-indigo-600 text-white text-sm 
-                          rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                        className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                       >
                         {isPostingQuestion ? 'Posting...' : 'Post Question'}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 
-                      text-center text-amber-700 text-sm">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center text-amber-700 text-sm">
                     Enroll in this course to join the discussion
                   </div>
                 )}
 
-                {/* Posts List */}
                 {posts.length === 0 ? (
                   <div className="text-center py-12 text-slate-500">
                     <p className="text-lg font-medium">No questions yet</p>
@@ -368,41 +386,26 @@ export function CourseDetail() {
                   </div>
                 ) : (
                   posts.map((post) => (
-                    <div key={post._id}
-                      className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-
-                      {/* Post Header */}
+                    <div key={post._id} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 
-                              flex items-center justify-center text-indigo-700 
-                              font-bold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
                             {post.author_name?.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                              {post.author_name}
-                            </p>
+                            <p className="text-sm font-semibold text-slate-800">{post.author_name}</p>
                             <p className="text-xs text-slate-400">
-                              {post.author_role} · {new Date(post.createdAt)
-                                .toLocaleDateString()}
+                              {post.author_role} · {new Date(post.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
                         {post.is_pinned && (
-                          <span className="text-xs bg-amber-100 text-amber-700 
-                              px-2 py-1 rounded-full font-medium">
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
                             📌 Pinned
                           </span>
                         )}
                       </div>
-
-                      {/* Post Content */}
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {post.content}
-                      </p>
-
-                      {/* Post Actions */}
+                      <p className="text-slate-700 text-sm leading-relaxed">{post.content}</p>
                       <div className="flex items-center gap-4 pt-1">
                         <button
                           onClick={async () => {
@@ -410,8 +413,7 @@ export function CourseDetail() {
                             const updated = await getPosts(id);
                             setPosts(updated);
                           }}
-                          className="flex items-center gap-1 text-xs text-slate-500 
-                            hover:text-indigo-600 transition"
+                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 transition"
                         >
                           👍 {post.upvotes?.length || 0}
                         </button>
@@ -425,57 +427,39 @@ export function CourseDetail() {
                               setReplies(prev => ({ ...prev, [post._id]: r }));
                             }
                           }}
-                          className="flex items-center gap-1 text-xs text-slate-500 
-                            hover:text-indigo-600 transition"
+                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 transition"
                         >
                           💬 {post.reply_count || 0} Replies
                         </button>
                       </div>
-
-                      {/* Replies Section */}
                       {expandedPost === post._id && (
                         <div className="border-t border-slate-100 pt-3 space-y-3">
                           {(replies[post._id] || []).map((reply) => (
-                            <div key={reply._id}
-                              className="flex gap-3 pl-4 border-l-2 border-indigo-100">
-                              <div className="w-7 h-7 rounded-full bg-emerald-100 
-                                  flex items-center justify-center text-emerald-700 
-                                  font-bold text-xs flex-shrink-0">
+                            <div key={reply._id} className="flex gap-3 pl-4 border-l-2 border-indigo-100">
+                              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
                                 {reply.author_name?.charAt(0).toUpperCase()}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <p className="text-xs font-semibold text-slate-800">
-                                    {reply.author_name}
-                                  </p>
+                                  <p className="text-xs font-semibold text-slate-800">{reply.author_name}</p>
                                   {reply.is_best_answer && (
-                                    <span className="text-xs bg-green-100 
-                                        text-green-700 px-2 py-0.5 rounded-full">
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                       ✅ Best Answer
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-600 mt-0.5">
-                                  {reply.content}
-                                </p>
+                                <p className="text-xs text-slate-600 mt-0.5">{reply.content}</p>
                               </div>
                             </div>
                           ))}
-
-                          {/* Reply Input */}
                           {isEnrolled && (
                             <div className="flex gap-2 pt-2">
                               <input
                                 type="text"
                                 placeholder="Write a reply..."
                                 value={newReplyContent[post._id] || ''}
-                                onChange={(e) => setNewReplyContent(prev => ({
-                                  ...prev,
-                                  [post._id]: e.target.value
-                                }))}
-                                className="flex-1 border border-slate-300 rounded-lg 
-                                  px-3 py-1.5 text-xs focus:outline-none 
-                                  focus:ring-2 focus:ring-indigo-300"
+                                onChange={(e) => setNewReplyContent(prev => ({ ...prev, [post._id]: e.target.value }))}
+                                className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
                               />
                               <button
                                 onClick={async () => {
@@ -485,16 +469,13 @@ export function CourseDetail() {
                                     await createReply(post._id, content);
                                     const r = await getReplies(post._id);
                                     setReplies(prev => ({ ...prev, [post._id]: r }));
-                                    setNewReplyContent(prev => ({
-                                      ...prev, [post._id]: ''
-                                    }));
+                                    setNewReplyContent(prev => ({ ...prev, [post._id]: '' }));
                                     toast.success('Reply posted!');
                                   } catch {
                                     toast.error('Failed to post reply');
                                   }
                                 }}
-                                className="px-3 py-1.5 bg-indigo-600 text-white 
-                                  text-xs rounded-lg hover:bg-indigo-700"
+                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700"
                               >
                                 Reply
                               </button>
@@ -517,7 +498,7 @@ export function CourseDetail() {
             <ul className="space-y-4">
               <li className="flex items-center text-sm text-slate-600">
                 <BookOpen className="h-5 w-5 text-slate-400 mr-3" />
-                <span>{course.lessons?.length || 0} Lessons</span>
+                <span>{lessons.length} Lesson{lessons.length !== 1 ? 's' : ''}</span>
               </li>
               <li className="flex items-center text-sm text-slate-600">
                 <Clock className="h-5 w-5 text-slate-400 mr-3" />

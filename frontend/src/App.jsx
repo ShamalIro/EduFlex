@@ -41,6 +41,7 @@ import { CreateCourse } from './pages/tutor/CreateCourse';
 import AddLesson from './pages/tutor/AddLesson';
 import CourseLessons from './pages/tutor/CourseLessons';
 import EditLesson from './pages/tutor/EditLesson';
+
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserManagement } from './pages/admin/UserManagement';
@@ -51,119 +52,122 @@ import AdminCourseDetail from './pages/admin/AdminCourseDetail';
 export function App() {
   return (
     <>
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
         autoClose={3000}
       />
       <AuthProvider>
         <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/courses" element={<PublicCoursesPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/courses" element={<PublicCoursesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Home */}
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <AuthenticatedHome />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Profile Settings */}
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Student Routes */}
-          <Route
-            path="/student"
-            element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<StudentDashboard />} />
-            <Route path="courses" element={<CourseCatalog />} />
-            <Route path="my-courses" element={<MyCourses />} />
-            <Route path="courses/:id" element={<CourseDetail />} />
-            <Route path="lessons/:id" element={<LessonViewer />} />
-            <Route path="quiz/:id" element={<QuizPage />} />
-            <Route path="results" element={<ResultsPage />} />
-            <Route path="assignments" element={<AssignmentsPage />} />
-            <Route path="quizzes" element={<QuizzesPage />} />
-            <Route path="payment/:courseId" element={<PaymentPage />} />
-            <Route path="financial-aid/:id" element={<FinancialAidPage />} />
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
-
-          {/* Tutor Routes */}
-          <Route
-            path="/tutor"
-            element={
-              <ProtectedRoute allowedRoles={['tutor']}>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<TutorDashboard />} />
-            <Route path="create-course" element={<CreateCourse />} />
-            <Route path="courses" element={<TutorCourseManager />} />
+            {/* Authenticated Home */}
             <Route
-              path="courses/:courseId/assessments"
-              element={<TutorAssessmentsManager />}
-            />
-            <Route path="courses/:id/add-lesson" element={<AddLesson />} />
-            <Route path="courses/:id/lessons" element={<CourseLessons />} />
-            <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
-            <Route 
-              path="students" 
+              path="/home"
               element={
-                <div className="p-8 text-center">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
-                  <p className="text-slate-500">Student Management - Coming Soon</p>
-                  <p className="text-slate-400 text-sm mt-2">This will be available when EnrollmentService is ready</p>
-                </div>
+                <ProtectedRoute>
+                  <AuthenticatedHome />
+                </ProtectedRoute>
               }
             />
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="pending-tutors" element={<PendingTutors />} />
-            <Route path="courses" element={<AdminCourseManagement />} />
-            <Route path="courses/:id" element={<AdminCourseDetail />} />
-            <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
+            {/* Profile Settings */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* Student Routes */}
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="courses" element={<CourseCatalog />} />
+              <Route path="my-courses" element={<MyCourses />} />
+              <Route path="courses/:id" element={<CourseDetail />} />
+
+              {/* ✅ FIXED: LessonViewer now receives courseId + lessonId */}
+              <Route path="courses/:courseId/lessons/:lessonId" element={<LessonViewer />} />
+
+              <Route path="quiz/:id" element={<QuizPage />} />
+              <Route path="results" element={<ResultsPage />} />
+              <Route path="assignments" element={<AssignmentsPage />} />
+              <Route path="quizzes" element={<QuizzesPage />} />
+              <Route path="payment/:courseId" element={<PaymentPage />} />
+              <Route path="financial-aid/:id" element={<FinancialAidPage />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+
+            {/* Tutor Routes */}
+            <Route
+              path="/tutor"
+              element={
+                <ProtectedRoute allowedRoles={['tutor']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<TutorDashboard />} />
+              <Route path="create-course" element={<CreateCourse />} />
+              <Route path="courses" element={<TutorCourseManager />} />
+              <Route
+                path="courses/:courseId/assessments"
+                element={<TutorAssessmentsManager />}
+              />
+              <Route path="courses/:id/add-lesson" element={<AddLesson />} />
+              <Route path="courses/:id/lessons" element={<CourseLessons />} />
+              <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
+              <Route
+                path="students"
+                element={
+                  <div className="p-8 text-center">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-4">My Students</h2>
+                    <p className="text-slate-500">Student Management - Coming Soon</p>
+                    <p className="text-slate-400 text-sm mt-2">This will be available when EnrollmentService is ready</p>
+                  </div>
+                }
+              />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="pending-tutors" element={<PendingTutors />} />
+              <Route path="courses" element={<AdminCourseManagement />} />
+              <Route path="courses/:id" element={<AdminCourseDetail />} />
+              <Route path="reports" element={<div className="p-8 text-center text-slate-500">Reports - Coming Soon</div>} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </>
   );
 }

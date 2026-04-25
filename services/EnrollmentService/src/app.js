@@ -129,6 +129,15 @@ app.post('/', authMiddleware, async (req, res) => {
       status: 'active'
     });
 
+    // Update students_count in CourseService
+    try {
+      await axios.patch(
+        `${process.env.COURSE_SERVICE_URL}/${courseId}/increment-students`
+      );
+    } catch (err) {
+      console.error('Failed to update students count:', err.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Enrolled successfully',
@@ -448,6 +457,83 @@ No explanation, no markdown, just the JSON array.
       success: false,
       message: 'Failed to get recommendations',
       error: error.message
+    });
+  }
+});
+
+// Get all student IDs enrolled in a course (internal use)
+app.get('/course/:courseId/students', async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      course_id: String(req.params.courseId),
+      status: { $ne: 'cancelled' }
+    }, { student_id: 1 });
+
+    const studentIds = enrollments.map(e => String(e.student_id));
+
+    return res.json({
+      success: true,
+      data: { studentIds }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
+      error: error.message
+    });
+  }
+});
+
+// Fix students count (one-time fix)
+app.get('/fix-counts', async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({ status: 'active' });
+
+    // Count per course
+    const counts = {};
+    enrollments.forEach(e => {
+      counts[e.course_id] = (counts[e.course_id] || 0) + 1;
+    });
+
+    console.log('Counts to update:', counts);
+
+    // Update each course directly via CourseService
+    const results = [];
+    for (const [courseId, count] of Object.entries(counts)) {
+      try {
+        // Try increment endpoint
+        const res2 = await axios.post(
+          `${process.env.COURSE_SERVICE_URL}/${courseId}/set-students`,
+          { count }
+        );
+        results.push({ courseId, count, status: 'updated' });
+        console.log(`Updated ${courseId}: ${count} students`);
+      } catch (err) {
+        console.error(`Failed for ${courseId}:`, err.message);
+        results.push({ courseId, count, status: 'failed', error: err.message });
+      }
+    }
+
+    return res.json({ success: true, counts, results });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - get total active enrollment count
+app.get('/admin/count', async (req, res) => {
+  try {
+    const count = await Enrollment.countDocuments({ 
+      status: { $ne: 'cancelled' } 
+    });
+    return res.json({
+      success: true,
+      data: { count }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });
