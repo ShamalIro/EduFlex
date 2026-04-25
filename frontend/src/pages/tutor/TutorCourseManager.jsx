@@ -292,7 +292,7 @@ export function TutorCourseManager() {
                       onClick={() => navigate(`/tutor/courses/${course._id}/add-lesson`)}
                     >
                       <Edit2 className="h-3.5 w-3.5 mr-2" />
-                      Edit Content
+                      Add Lesson
                     </Button>
 
                     <Button
