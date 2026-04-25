@@ -49,7 +49,31 @@ export const reportPost = async (postId) => {
   return res.data;
 };
 
+export const createAnnouncement = async (courseId, content) => {
+  const res = await courseClient.post('/discussions/announcements', {
+    course_id: courseId,
+    content
+  });
+  return res.data.data.post;
+};
+
 export const deletePost = async (postId) => {
   const res = await courseClient.delete(`/discussions/posts/${postId}`);
   return res.data;
+};
+
+export const editPost = async (postId, content) => {
+  const res = await courseClient.patch(
+    `/discussions/posts/${postId}/edit`,
+    { content }
+  );
+  return res.data.data.post;
+};
+
+export const editReply = async (replyId, content) => {
+  const res = await courseClient.patch(
+    `/discussions/replies/${replyId}/edit`,
+    { content }
+  );
+  return res.data.data.reply;
 };

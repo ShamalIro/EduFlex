@@ -351,6 +351,42 @@ const deleteLesson = async (req, res) => {
   }
 };
 
+// Increment students count
+const incrementStudents = async (req, res) => {
+  try {
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { students_count: 1 } },
+      { new: true }
+    );
+    return res.json({ success: true, data: { course } });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Set students count directly
+const setStudentsCount = async (req, res) => {
+  try {
+    const { count } = req.body;
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $set: { students_count: count } },
+      { new: true }
+    );
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    console.log(`Set students_count=${count} for course ${req.params.id}`);
+    return res.json({ success: true, data: { course } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createCourse,
   getAllCourses,
@@ -362,5 +398,7 @@ module.exports = {
   getAdminStats,
   addLesson,
   updateLesson,
-  deleteLesson
+  deleteLesson,
+  incrementStudents,
+  setStudentsCount
 };

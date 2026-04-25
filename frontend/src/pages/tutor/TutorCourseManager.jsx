@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ClipboardList, Eye, MessageCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, ClipboardList, Eye, MessageCircle, Megaphone } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { getMyCourses, createCourse, deleteCourse, togglePublishCourse } from '../../api/courses';
-import { getPosts, createReply, getReplies, markBestAnswer, deletePost } from '../../api/discussions';
+import { getPosts, createReply, getReplies, markBestAnswer, deletePost, createAnnouncement } from '../../api/discussions';
 import { Trash2 as TrashIcon } from 'lucide-react';
 
 export function TutorCourseManager() {
@@ -26,6 +26,10 @@ export function TutorCourseManager() {
   const [postReplies, setPostReplies] = useState({});
   const [replyContent, setReplyContent] = useState({});
   const [courseQuestionCounts, setCourseQuestionCounts] = useState({});
+  const [announceModal, setAnnounceModal] = useState(false);
+  const [announceCourse, setAnnounceCourse] = useState(null);
+  const [announceContent, setAnnounceContent] = useState('');
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [newCourse, setNewCourse] = useState({
     title: '',
     description: '',
@@ -131,6 +135,22 @@ export function TutorCourseManager() {
       setCourses(courses.filter(c => c._id !== id));
     } catch (err) {
       alert('Failed to delete course');
+    }
+  };
+
+  const handleSendAnnouncement = async () => {
+    if (!announceContent.trim()) return;
+    setSendingAnnouncement(true);
+    try {
+      await createAnnouncement(announceCourse._id, announceContent);
+      setAnnounceModal(false);
+      setAnnounceContent('');
+      setAnnounceCourse(null);
+      alert('Announcement sent to all enrolled students!');
+    } catch (err) {
+      alert('Failed to send announcement');
+    } finally {
+      setSendingAnnouncement(false);
     }
   };
 
@@ -294,6 +314,19 @@ export function TutorCourseManager() {
                     >
                       <ClipboardList className="h-3.5 w-3.5 mr-2" />
                       Assessment
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setAnnounceCourse(course);
+                        setAnnounceModal(true);
+                      }}
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                    >
+                      <Megaphone className="h-3.5 w-3.5 mr-2" />
+                      Announce
                     </Button>
 
                     <Button
@@ -593,6 +626,66 @@ export function TutorCourseManager() {
                 </div>
               ))
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Announcement Modal */}
+      {announceModal && announceCourse && (
+        <Modal
+          isOpen={announceModal}
+          onClose={() => {
+            if (!sendingAnnouncement) {
+              setAnnounceModal(false);
+              setAnnounceContent('');
+              setAnnounceCourse(null);
+            }
+          }}
+          title={`📢 Send Announcement — ${announceCourse.title}`}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              This announcement will be sent to all enrolled students
+              and appear pinned in the Q&A section.
+            </p>
+            <div>
+              <label className="block text-sm font-medium 
+                  text-slate-700 mb-1">
+                Announcement Message
+              </label>
+              <textarea
+                value={announceContent}
+                onChange={(e) => setAnnounceContent(e.target.value)}
+                placeholder="Type your announcement here..."
+                rows={4}
+                className="w-full border border-slate-300 rounded-lg 
+                  px-3 py-2 text-sm focus:outline-none 
+                  focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAnnounceModal(false);
+                  setAnnounceContent('');
+                }}
+                disabled={sendingAnnouncement}
+              >
+                Cancel
+              </Button>
+              <button
+                onClick={handleSendAnnouncement}
+                disabled={sendingAnnouncement || !announceContent.trim()}
+                className="flex items-center gap-2 px-4 py-2 
+                  bg-amber-500 text-white text-sm font-semibold 
+                  rounded-lg hover:bg-amber-600 transition
+                  disabled:opacity-50"
+              >
+                <Megaphone className="h-4 w-4" />
+                {sendingAnnouncement ? 'Sending...' : 'Send to All Students'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

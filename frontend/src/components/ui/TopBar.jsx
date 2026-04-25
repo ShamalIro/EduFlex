@@ -128,7 +128,8 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
           <Search className="h-4 w-4 text-slate-400 absolute left-3 top-3" />
         </div>
 
-        {/* ✅ Cart Icon */}
+        {/* ✅ Cart Icon — hidden for admin */}
+        {user?.role !== 'admin' && (
         <div className="relative">
           <button
             onClick={() => { setShowCart(!showCart); setShowNotifications(false); }}
@@ -194,6 +195,7 @@ export function TopBar({ title, onMenuClick, cart = [], onRemoveFromCart }) {
             </div>
           )}
         </div>
+        )}
 
         {/* ✅ Notification Bell Icon */}
         <div className="relative">

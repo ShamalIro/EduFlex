@@ -86,4 +86,5 @@ export const rejectTutor = async (userId) => {
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to reject tutor');
   }
+ 
 };

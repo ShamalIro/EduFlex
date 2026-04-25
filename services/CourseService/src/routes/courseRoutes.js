@@ -13,7 +13,9 @@ const {
   getAdminStats,
   addLesson,
   updateLesson,
-  deleteLesson
+  deleteLesson,
+  incrementStudents,
+  setStudentsCount
 } = require('../controllers/courseController');
 const { authMiddleware, isTutor } = require('../middleware/authMiddleware');
 
@@ -27,6 +29,12 @@ router.get('/', getAllCourses);
 router.post('/', authMiddleware, isTutor, createCourse);
 router.get('/tutor/my-courses', authMiddleware, isTutor, getMyCourses);
 router.get('/admin/stats', getAdminStats);
+
+// Increment students count (internal)
+router.patch('/:id/increment-students', incrementStudents);
+
+// Set students count (one-time fix)
+router.post('/:id/set-students', setStudentsCount);
 
 // Dynamic routes (always last!)
 router.post('/:id/lessons', authMiddleware, isTutor, upload.single('pdf'), addLesson);

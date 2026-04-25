@@ -12,10 +12,12 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [courseStats, setCourseStats] = useState({ totalCourses: 0, byCategory: [] });
   const [weeklyRegistrations, setWeeklyRegistrations] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [activeEnrollments, setActiveEnrollments] = useState(0);
 
   useEffect(() => { 
     fetchTotalUsers();
     fetchPendingTutors();
+    fetchActiveEnrollments();
   }, []);
 
   const fetchTotalUsers = async () => {
@@ -51,6 +53,15 @@ export function AdminDashboard() {
       setPendingTutors(data.length);
     } catch (error) {
       console.error('Failed to fetch pending tutors:', error);
+    }
+  };
+
+  const fetchActiveEnrollments = async () => {
+    try {
+      const response = await client.get('/enrollment/admin/count');
+      setActiveEnrollments(response.data.data.count || 0);
+    } catch (error) {
+      console.error('Failed to fetch enrollments:', error);
     }
   };
 
@@ -97,9 +108,9 @@ export function AdminDashboard() {
     },
     {
       label: 'Active Enrollments',
-      value: 'Coming Soon',
+      value: String(activeEnrollments),
       icon: GraduationCap,
-      change: 'EnrollmentService pending',
+      change: 'Total enrollments',
       trend: 'up'
     }
   ];
