@@ -42,20 +42,19 @@ const enrichCourseWithEnrollment = (course, enrollment) => ({
 
 export const getEnrolledCourses = async () => {
   try {
-    // Get enrollment records from EnrollmentService
     const enrollRes = await courseClient.get('/grades/mine');
     const enrollments = enrollRes.data.data.enrollments;
 
     if (!enrollments || enrollments.length === 0) return [];
 
-    // For each enrollment, fetch full course from CourseService
     const coursePromises = enrollments.map(async (enrollment) => {
       try {
         const courseRes = await courseClient.get(`/courses/${enrollment.course_id}`);
         const course = courseRes.data.data.course;
+
         return {
           ...course,
-          progress: enrollment.progress || 0,  // attach progress
+          progress: enrollment.progress || 0,
           enrollment_id: enrollment._id
         };
       } catch {
@@ -64,8 +63,7 @@ export const getEnrolledCourses = async () => {
     });
 
     const courses = await Promise.all(coursePromises);
-    return courses.filter(Boolean); // remove nulls
-
+    return courses.filter(Boolean);
   } catch (error) {
     console.error('getEnrolledCourses error:', error);
     return [];
@@ -74,8 +72,8 @@ export const getEnrolledCourses = async () => {
 
 export const enrollFreeCourse = async (courseId) => {
   try {
-    const res = await courseClient.post('/grades', { 
-      courseId: courseId  // ← matches EnrollmentService body
+    const res = await courseClient.post('/grades', {
+      courseId: courseId
     });
     return res.data;
   } catch (error) {
@@ -86,7 +84,7 @@ export const enrollFreeCourse = async (courseId) => {
 
 export const getEnrollmentStatus = async (courseId) => {
   try {
-    const cleanId = String(courseId).trim(); // remove any whitespace
+    const cleanId = String(courseId).trim();
     const res = await courseClient.get(`/grades/course/${cleanId}/status`);
     return res.data.data;
   } catch (error) {
@@ -100,10 +98,22 @@ export const getCourseById = async (id) => {
   const course = response.data?.data?.course;
   return course ? normalizeCourse(course) : null;
 };
-// Get lessons for a course - will connect to CourseService later  
+
+// Get lessons for a course
 export const getCourseLessons = async (courseId) => {
-  return [];
+  const response = await courseClient.get(`/courses/${courseId}`);
+  const course = response.data?.data?.course;
+
+  const lessons = course?.lessons || [];
+
+  return lessons.map((lesson) => ({
+    ...lesson,
+    id: String(lesson._id || lesson.id || ''),
+    title: lesson.lessonTitle || lesson.title || 'Untitled Lesson',
+    duration: lesson.duration || 'Lesson content',
+  }));
 };
+
 // Get tutor's own courses
 export const getMyCourses = async () => {
   const response = await courseClient.get('/courses/tutor/my-courses');
