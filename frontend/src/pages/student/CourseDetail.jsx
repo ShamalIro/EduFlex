@@ -19,7 +19,9 @@ import {
   getCourseById,
   getCourseLessons,
   enrollFreeCourse,
-  getEnrollmentStatus
+  getEnrollmentStatus,
+  getCourseReviews,
+  addCourseReview
 } from '../../api/courses';
 import {
   getPosts,
@@ -48,6 +50,7 @@ export function CourseDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+
   const [posts, setPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPostingQuestion, setIsPostingQuestion] = useState(false);
@@ -59,6 +62,15 @@ export function CourseDetail() {
   const [editingReply, setEditingReply] = useState(null);
   const [editReplyContent, setEditReplyContent] = useState('');
 
+  const [reviews, setReviews] = useState([]);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewStats, setReviewStats] = useState({
+    rating: 0,
+    reviewCount: 0
+  });
+
   const enrolledCount = Number.isFinite(Number(course?.enrolledCount))
     ? Number(course.enrolledCount)
     : 0;
@@ -68,6 +80,23 @@ export function CourseDetail() {
   useEffect(() => {
     if (activeTab === 'q&a' && id) {
       getPosts(id).then(setPosts).catch(console.error);
+    }
+  }, [activeTab, id]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && id) {
+      getCourseReviews(id)
+        .then((data) => {
+          setReviews(data?.reviews || []);
+          setReviewStats({
+            rating: data?.rating || 0,
+            reviewCount: data?.reviewCount || data?.reviews?.length || 0
+          });
+        })
+        .catch((error) => {
+          console.error('Failed to load reviews:', error);
+          toast.error('Failed to load reviews');
+        });
     }
   }, [activeTab, id]);
 
@@ -128,6 +157,41 @@ export function CourseDetail() {
         thumbnail: course.thumbnail
       }
     });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewComment.trim()) {
+      toast.error('Please write a review comment');
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+
+      const data = await addCourseReview(id, {
+        rating: reviewRating,
+        comment: reviewComment
+      });
+
+      setReviews(data?.reviews || []);
+      setReviewStats({
+        rating: data?.rating || 0,
+        reviewCount: data?.reviewCount || data?.reviews?.length || 0
+      });
+
+      setCourse((prev) => ({
+        ...prev,
+        rating: data?.rating || prev.rating
+      }));
+
+      setReviewComment('');
+      setReviewRating(5);
+      toast.success('Review added successfully!');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to add review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const handleEditPost = async (postId) => {
@@ -204,7 +268,9 @@ export function CourseDetail() {
 
                 <div className="flex items-center">
                   <Star className="h-4 w-4 text-amber-400 mr-1 fill-current" />
-                  <span>{course.rating} (420 reviews)</span>
+                  <span>
+                    {Number(reviewStats.rating || course.rating || 0).toFixed(1)} ({reviewStats.reviewCount || reviews.length || 0} reviews)
+                  </span>
                 </div>
 
                 <div className="flex items-center">
@@ -404,8 +470,123 @@ export function CourseDetail() {
             )}
 
             {activeTab === 'reviews' && (
-              <div className="text-center py-12 text-slate-500">
-                Reviews coming soon...
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Course Reviews</h3>
+                      <p className="text-sm text-slate-500 mt-1">
+                        {reviewStats.reviewCount} review{reviewStats.reviewCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-amber-400 fill-current" />
+                      <span className="text-lg font-bold text-slate-900">
+                        {Number(reviewStats.rating || course.rating || 0).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isEnrolled ? (
+                    <div className="border-t border-slate-100 pt-4">
+                      <h4 className="font-semibold text-slate-800 mb-3">Add Your Review</h4>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            className="transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className={`h-7 w-7 ${
+                                star <= reviewRating
+                                  ? 'text-amber-400 fill-current'
+                                  : 'text-slate-300'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Write your review about this course..."
+                        rows={4}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      />
+
+                      <div className="flex justify-end mt-3">
+                        <button
+                          onClick={handleSubmitReview}
+                          disabled={isSubmittingReview || !reviewComment.trim()}
+                          className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-t border-slate-100 pt-4">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center text-amber-700 text-sm">
+                        Enroll in this course to add a review.
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {reviews.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <p className="text-lg font-medium">No reviews yet</p>
+                    <p className="text-sm mt-1">
+                      Be the first enrolled student to review this course.
+                    </p>
+                  </div>
+                ) : (
+                  reviews.map((review) => (
+                    <div
+                      key={review._id || `${review.student_id}-${review.createdAt}`}
+                      className="bg-white border border-slate-200 rounded-xl p-5"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                            {review.student_name?.charAt(0).toUpperCase() || 'S'}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {review.student_name || 'Student'}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`h-4 w-4 ${
+                                star <= Number(review.rating)
+                                  ? 'text-amber-400 fill-current'
+                                  : 'text-slate-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {review.comment}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 

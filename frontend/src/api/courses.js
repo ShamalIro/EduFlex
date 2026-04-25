@@ -17,28 +17,11 @@ const normalizeCourse = (course) => ({
   rating: toSafeNumber(course?.rating, 0)
 });
 
-// Get all published courses (student browse page)
 export const getCourses = async () => {
   const response = await courseClient.get('/courses');
   const courses = response.data?.data?.courses || [];
   return courses.map(normalizeCourse);
 };
-
-const extractEnrollmentList = (responseData) => {
-  const scoped = responseData?.data?.enrollments;
-  if (Array.isArray(scoped)) return scoped;
-  if (Array.isArray(responseData?.enrollments)) return responseData.enrollments;
-  return [];
-};
-
-const enrichCourseWithEnrollment = (course, enrollment) => ({
-  ...normalizeCourse(course),
-  id: String(course?._id || course?.id || enrollment?.course_id || ''),
-  progress: Number(enrollment?.progress || 0),
-  enrolledAt: enrollment?.createdAt || enrollment?.enrolledAt || null,
-  enrollmentId: enrollment?._id || enrollment?.id || null,
-  course_id: enrollment?.course_id || course?._id || course?.id
-});
 
 export const getEnrolledCourses = async () => {
   try {
@@ -92,14 +75,12 @@ export const getEnrollmentStatus = async (courseId) => {
   }
 };
 
-// Get single course by ID
 export const getCourseById = async (id) => {
   const response = await courseClient.get(`/courses/${id}`);
   const course = response.data?.data?.course;
   return course ? normalizeCourse(course) : null;
 };
 
-// Get lessons for a course
 export const getCourseLessons = async (courseId) => {
   const response = await courseClient.get(`/courses/${courseId}`);
   const course = response.data?.data?.course;
@@ -114,37 +95,31 @@ export const getCourseLessons = async (courseId) => {
   }));
 };
 
-// Get tutor's own courses
 export const getMyCourses = async () => {
   const response = await courseClient.get('/courses/tutor/my-courses');
   return response.data.data.courses;
 };
 
-// Create a new course (tutor)
 export const createCourse = async (courseData) => {
   const response = await courseClient.post('/courses', courseData);
   return response.data.data.course;
 };
 
-// Update a course (tutor)
 export const updateCourse = async (id, courseData) => {
   const response = await courseClient.put(`/courses/${id}`, courseData);
   return response.data.data.course;
 };
 
-// Delete a course (tutor)
 export const deleteCourse = async (id) => {
   const response = await courseClient.delete(`/courses/${id}`);
   return response.data;
 };
 
-// Publish / Unpublish a course (tutor)
 export const togglePublishCourse = async (id) => {
   const response = await courseClient.patch(`/courses/${id}/publish`);
   return response.data.data.course;
 };
 
-// Add a lesson to a course (tutor)
 export const addLesson = (courseId, formData) =>
   courseClient.post(`/courses/${courseId}/lessons`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -160,13 +135,11 @@ export const deleteLesson = async (courseId, lessonId) => {
   return response.data;
 };
 
-// Get admin course statistics
 export const getAdminCourseStats = async () => {
   const res = await courseClient.get('/courses/admin/stats');
   return res.data;
 };
 
-// AI Course Recommendations
 export const getAIRecommendations = async (enrolledCourses, learningGoal = '') => {
   try {
     const res = await courseClient.post('/grades/recommendations', {
@@ -176,6 +149,29 @@ export const getAIRecommendations = async (enrolledCourses, learningGoal = '') =
     return res.data.data.recommendations || [];
   } catch (error) {
     console.error('Recommendations error:', error);
+    return [];
+  }
+};
+
+export const getCourseReviews = async (courseId) => {
+  const response = await courseClient.get(`/courses/${courseId}/reviews`);
+  return response.data.data;
+};
+
+export const addCourseReview = async (courseId, reviewData) => {
+  const response = await courseClient.post(`/courses/${courseId}/reviews`, reviewData);
+  return response.data.data;
+};
+
+// Get students enrolled in a tutor's course
+export const getCourseStudents = async (courseId) => {
+  try {
+    const res = await courseClient.get(
+      `/grades/course/${courseId}/students/details`
+    );
+    return res.data.data.enrollments || [];
+  } catch (error) {
+    console.error('getCourseStudents error:', error);
     return [];
   }
 };

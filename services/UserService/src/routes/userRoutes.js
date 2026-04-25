@@ -230,4 +230,28 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Get user by ID (internal use - for tutor to see student info)
+router.get('/find/:id', authMiddleware, async (req, res) => {
+  try {
+    const { findById } = require('../models/userModel');
+    const user = await findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    return res.json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

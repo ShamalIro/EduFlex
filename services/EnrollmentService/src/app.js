@@ -538,6 +538,26 @@ app.get('/admin/count', async (req, res) => {
   }
 });
 
+// Get enrolled students with enrollment date for a course (tutor use)
+app.get('/course/:courseId/students/details', authMiddleware, async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      course_id: String(req.params.courseId),
+      status: { $ne: 'cancelled' }
+    }).sort({ createdAt: -1 });
+    return res.json({
+      success: true,
+      data: { enrollments }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
+      error: error.message
+    });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
