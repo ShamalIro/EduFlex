@@ -41,6 +41,7 @@ import { CreateCourse } from './pages/tutor/CreateCourse';
 import AddLesson from './pages/tutor/AddLesson';
 import CourseLessons from './pages/tutor/CourseLessons';
 import EditLesson from './pages/tutor/EditLesson';
+import { TutorStudents } from './pages/tutor/TutorStudents';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -137,22 +138,7 @@ export function App() {
               <Route path="courses/:id/add-lesson" element={<AddLesson />} />
               <Route path="courses/:id/lessons" element={<CourseLessons />} />
               <Route path="courses/:id/lessons/:lessonId/edit" element={<EditLesson />} />
-              <Route
-                path="students"
-                element={
-                  <div className="p-8 text-center">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">
-                      My Students
-                    </h2>
-                    <p className="text-slate-500">
-                      Student Management - Coming Soon
-                    </p>
-                    <p className="text-slate-400 text-sm mt-2">
-                      This will be available when EnrollmentService is ready
-                    </p>
-                  </div>
-                }
-              />
+              <Route path="students" element={<TutorStudents />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
 

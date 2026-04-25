@@ -5,7 +5,8 @@ const {
   verifyPassword,
   findByEmailWithPassword,
   updateUser,
-  getAllUsers: getAllUsersFromDB
+  getAllUsers: getAllUsersFromDB,
+  findByIds
 } = require('../models/userModel');
 const { generateToken } = require('../utils/jwtHelper');
 
@@ -301,10 +302,36 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+/**
+ * Get multiple users by IDs (internal)
+ */
+const getUsersByIds = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ids array is required'
+      });
+    }
+    const users = await findByIds(ids);
+    return res.json({
+      success: true,
+      data: { users }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
-  getAllUsers
+  getAllUsers,
+  getUsersByIds
 };
