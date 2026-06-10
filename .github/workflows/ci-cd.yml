@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      
 
 jobs:
   # ─────────────────────────────────────────
@@ -69,6 +68,27 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-enrollment-service:latest
 
+      - name: Build & Push Payment Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/PaymentService
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-payment-service:latest
+
+      - name: Build & Push Notification Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/NotificationService
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-notification-service:latest
+
+      - name: Build & Push Discussion Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/DiscussionService
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-discussion-service:latest
+
   # ─────────────────────────────────────────
   # JOB 2: DEPLOY TO EC2
   # ─────────────────────────────────────────
@@ -87,7 +107,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,nginx/nginx.conf"
+          source: "docker-compose.yml,nginx/nginx.conf,mysql/init.sql"
           target: "/home/ubuntu/eduflex"
 
       - name: SSH and Deploy
@@ -99,6 +119,19 @@ jobs:
           script: |
             cd /home/ubuntu/eduflex
 
+            # Create .env file from GitHub Secrets
+            cat > .env << EOF
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            COURSE_SERVICE_MONGO_URI=${{ secrets.COURSE_SERVICE_MONGO_URI }}
+            ASSESSMENT_SERVICE_MONGO_URI=${{ secrets.ASSESSMENT_SERVICE_MONGO_URI }}
+            ENROLLMENT_SERVICE_MONGO_URI=${{ secrets.ENROLLMENT_SERVICE_MONGO_URI }}
+            PAYMENT_SERVICE_MONGO_URI=${{ secrets.PAYMENT_SERVICE_MONGO_URI }}
+            NOTIFICATION_SERVICE_MONGO_URI=${{ secrets.NOTIFICATION_SERVICE_MONGO_URI }}
+            DISCUSSION_SERVICE_MONGO_URI=${{ secrets.DISCUSSION_SERVICE_MONGO_URI }}
+            EOF
+
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-frontend:latest
@@ -107,6 +140,9 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-course-service:latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-assessment-service:latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-enrollment-service:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-payment-service:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-notification-service:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eduflex-discussion-service:latest
 
             docker compose down
             docker compose up -d
