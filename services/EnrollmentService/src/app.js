@@ -4,11 +4,13 @@ const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4004;
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/eduflex_enrollments';
+const DEFAULT_MONGO_URI = 'mongodb://127.0.0.1:27017/eduflex_enrollments';
+const MONGO_URI = process.env.MONGODB_URI || DEFAULT_MONGO_URI;
 
 const enrollmentSchema = new mongoose.Schema(
   {
@@ -60,6 +62,19 @@ const connectDB = async () => {
     const conn = await mongoose.connect(MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
+    if (MONGO_URI !== DEFAULT_MONGO_URI) {
+      console.warn(`Primary MongoDB URI failed: ${error.message}`);
+      console.warn(`Falling back to local MongoDB: ${DEFAULT_MONGO_URI}`);
+      try {
+        const fallbackConn = await mongoose.connect(DEFAULT_MONGO_URI);
+        console.log(`MongoDB Connected: ${fallbackConn.connection.host}`);
+        return;
+      } catch (fallbackError) {
+        console.error(`MongoDB fallback failed: ${fallbackError.message}`);
+        process.exit(1);
+      }
+    }
+
     console.error(`MongoDB connection failed: ${error.message}`);
     process.exit(1);
   }
@@ -113,6 +128,15 @@ app.post('/', authMiddleware, async (req, res) => {
       course_id: String(courseId),
       status: 'active'
     });
+
+    // Update students_count in CourseService
+    try {
+      await axios.patch(
+        `${process.env.COURSE_SERVICE_URL}/${courseId}/increment-students`
+      );
+    } catch (err) {
+      console.error('Failed to update students count:', err.message);
+    }
 
     return res.status(201).json({
       success: true,
@@ -273,6 +297,262 @@ app.patch('/:enrollmentId/progress', authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to update enrollment progress',
+      error: error.message
+    });
+  }
+});
+
+// AI Course Recommendations
+app.post('/recommendations', authMiddleware, async (req, res) => {
+  try {
+    const { enrolledCourses, learningGoal } = req.body;
+
+    // Fetch all available courses
+    let allCourses = [];
+    try {
+      const coursesRes = await axios.get(`${process.env.COURSE_SERVICE_URL}/`);
+      allCourses = coursesRes.data?.data?.courses || [];
+    } catch (courseErr) {
+      console.error('Course fetch failed:', courseErr.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch courses'
+      });
+    }
+
+    // Filter out enrolled courses
+    const enrolledIds = (enrolledCourses || []).map(c =>
+      String(c._id || c.id || c.course_id)
+    );
+    const availableCourses = allCourses.filter(
+      c => !enrolledIds.includes(String(c._id))
+    );
+
+    if (availableCourses.length === 0) {
+      return res.json({ success: true, data: { recommendations: [] } });
+    }
+
+    // Build course list for prompt
+    const availableSummary = availableCourses
+      .map((c, i) => 
+        `${i}. ${c.title} | ${c.category} | ${c.level} | ${c.description?.substring(0, 60) || ''}`
+      )
+      .join('\n');
+
+    // Build prompt based on learningGoal or enrolled courses
+    const prompt = learningGoal
+      ? `
+You are a course recommendation AI for EduFlex LMS.
+
+Student wants to learn: "${learningGoal}"
+
+Available courses (index. title | category | level | description):
+${availableSummary}
+
+Based on what the student wants to learn, recommend exactly 3 most relevant courses.
+Respond ONLY with a JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
+`
+      : `
+You are a course recommendation AI for EduFlex LMS.
+
+Student is enrolled in: ${(enrolledCourses || []).map(c => c.title).join(', ')}
+
+Available courses (index. title | category | level | description):
+${availableSummary}
+
+Recommend exactly 3 courses that match student learning path.
+Respond ONLY with JSON array of 3 indices. Example: [0, 3, 7]
+No explanation, no markdown, just the JSON array.
+`;
+
+    // Call Gemini API
+    let indices = [0, 1, 2]; // default fallback
+    try {
+      const geminiRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: prompt }] }] }
+      );
+
+      const rawText = geminiRes.data?.candidates?.[0]
+        ?.content?.parts?.[0]?.text || '[]';
+
+      const cleanText = rawText
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+
+      try {
+        indices = JSON.parse(cleanText);
+        console.log('AI indices:', indices);
+      } catch {
+        console.log('Parse failed, using fallback');
+        indices = [0, 1, 2];
+      }
+    } catch (geminiErr) {
+      console.error('Gemini failed:', geminiErr.message);
+
+      let fallbackCourses;
+
+      if (learningGoal) {
+        // Extract individual keywords from the learning goal
+        const keywords = learningGoal.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '') // remove special chars
+          .split(' ')
+          .filter(word => word.length > 2) // ignore short words like "i", "to"
+          .filter(word => !['want', 'learn', 'lean', 'need', 
+            'know', 'study', 'about', 'with', 'and', 'the', 
+            'for', 'how'].includes(word)); // ignore common words
+
+        console.log('Search keywords:', keywords);
+
+        const matched = availableCourses.filter(c => {
+          const searchText = [
+            c.title,
+            c.description,
+            c.category,
+            c.level
+          ].join(' ').toLowerCase();
+
+          // Match if ANY keyword found
+          return keywords.some(keyword => searchText.includes(keyword));
+        });
+
+        console.log('Matched courses:', matched.map(c => c.title));
+
+        fallbackCourses = matched.length > 0
+          ? matched.slice(0, 3)
+          : availableCourses.sort(() => Math.random() - 0.5).slice(0, 3);
+      } else {
+        fallbackCourses = [...availableCourses]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3);
+      }
+
+      return res.json({
+        success: true,
+        data: { recommendations: fallbackCourses }
+      });
+    }
+
+    // Shuffle available courses for variety
+    const shuffledAvailable = [...availableCourses]
+      .sort(() => Math.random() - 0.5);
+
+    const recommendations = indices
+      .filter(i => i >= 0 && i < availableCourses.length)
+      .map(i => availableCourses[i])
+      .slice(0, 3);
+
+    console.log('Recommendations:', recommendations.map(r => r.title));
+
+    return res.json({
+      success: true,
+      data: { recommendations }
+    });
+
+  } catch (error) {
+    console.error('Recommendations error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get recommendations',
+      error: error.message
+    });
+  }
+});
+
+// Get all student IDs enrolled in a course (internal use)
+app.get('/course/:courseId/students', async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      course_id: String(req.params.courseId),
+      status: { $ne: 'cancelled' }
+    }, { student_id: 1 });
+
+    const studentIds = enrollments.map(e => String(e.student_id));
+
+    return res.json({
+      success: true,
+      data: { studentIds }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
+      error: error.message
+    });
+  }
+});
+
+// Fix students count (one-time fix)
+app.get('/fix-counts', async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({ status: 'active' });
+
+    // Count per course
+    const counts = {};
+    enrollments.forEach(e => {
+      counts[e.course_id] = (counts[e.course_id] || 0) + 1;
+    });
+
+    console.log('Counts to update:', counts);
+
+    // Update each course directly via CourseService
+    const results = [];
+    for (const [courseId, count] of Object.entries(counts)) {
+      try {
+        // Try increment endpoint
+        const res2 = await axios.post(
+          `${process.env.COURSE_SERVICE_URL}/${courseId}/set-students`,
+          { count }
+        );
+        results.push({ courseId, count, status: 'updated' });
+        console.log(`Updated ${courseId}: ${count} students`);
+      } catch (err) {
+        console.error(`Failed for ${courseId}:`, err.message);
+        results.push({ courseId, count, status: 'failed', error: err.message });
+      }
+    }
+
+    return res.json({ success: true, counts, results });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin - get total active enrollment count
+app.get('/admin/count', async (req, res) => {
+  try {
+    const count = await Enrollment.countDocuments({ 
+      status: { $ne: 'cancelled' } 
+    });
+    return res.json({
+      success: true,
+      data: { count }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get enrolled students with enrollment date for a course (tutor use)
+app.get('/course/:courseId/students/details', authMiddleware, async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      course_id: String(req.params.courseId),
+      status: { $ne: 'cancelled' }
+    }).sort({ createdAt: -1 });
+    return res.json({
+      success: true,
+      data: { enrollments }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
       error: error.message
     });
   }

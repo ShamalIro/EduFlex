@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Edit2, Trash2, ClipboardList, Eye, MessageCircle, Megaphone } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { getMyCourses, createCourse, deleteCourse, togglePublishCourse } from '../../api/courses';
+import { getPosts, createReply, getReplies, markBestAnswer, deletePost, createAnnouncement } from '../../api/discussions';
+import { Trash2 as TrashIcon } from 'lucide-react';
 
 export function TutorCourseManager() {
   const navigate = useNavigate();
@@ -16,6 +18,18 @@ export function TutorCourseManager() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [discussionModal, setDiscussionModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [coursePosts, setCoursePosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [expandedPost, setExpandedPost] = useState(null);
+  const [postReplies, setPostReplies] = useState({});
+  const [replyContent, setReplyContent] = useState({});
+  const [courseQuestionCounts, setCourseQuestionCounts] = useState({});
+  const [announceModal, setAnnounceModal] = useState(false);
+  const [announceCourse, setAnnounceCourse] = useState(null);
+  const [announceContent, setAnnounceContent] = useState('');
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [newCourse, setNewCourse] = useState({
     title: '',
     description: '',
@@ -36,6 +50,20 @@ export function TutorCourseManager() {
       setError(null);
       const data = await getMyCourses();
       setCourses(data);
+
+      // Load question counts for each course
+      const counts = {};
+      await Promise.all(
+        data.map(async (course) => {
+          try {
+            const posts = await getPosts(course._id);
+            counts[course._id] = posts.length;
+          } catch {
+            counts[course._id] = 0;
+          }
+        })
+      );
+      setCourseQuestionCounts(counts);
     } catch (err) {
       setError('Failed to load courses');
       console.error(err);
@@ -110,12 +138,83 @@ export function TutorCourseManager() {
     }
   };
 
+  const handleSendAnnouncement = async () => {
+    if (!announceContent.trim()) return;
+    setSendingAnnouncement(true);
+    try {
+      await createAnnouncement(announceCourse._id, announceContent);
+      setAnnounceModal(false);
+      setAnnounceContent('');
+      setAnnounceCourse(null);
+      alert('Announcement sent to all enrolled students!');
+    } catch (err) {
+      alert('Failed to send announcement');
+    } finally {
+      setSendingAnnouncement(false);
+    }
+  };
+
   const handleTogglePublish = async (id) => {
     try {
       const updated = await togglePublishCourse(id);
       setCourses(courses.map(c => c._id === id ? updated : c));
     } catch (err) {
       alert('Failed to update course');
+    }
+  };
+
+  const openDiscussion = async (course) => {
+    setSelectedCourse(course);
+    setDiscussionModal(true);
+    setLoadingPosts(true);
+    try {
+      const posts = await getPosts(course._id);
+      setCoursePosts(posts);
+    } catch {
+      setCoursePosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  const handleTutorReply = async (postId) => {
+    const content = replyContent[postId];
+    if (!content?.trim()) return;
+    try {
+      await createReply(postId, content);
+      const updated = await getReplies(postId);
+      setPostReplies(prev => ({ ...prev, [postId]: updated }));
+      setReplyContent(prev => ({ ...prev, [postId]: '' }));
+      // Update count
+      const updatedPosts = await getPosts(selectedCourse._id);
+      setCoursePosts(updatedPosts);
+    } catch {
+      alert('Failed to post reply');
+    }
+  };
+
+  const handleMarkBest = async (replyId, postId) => {
+    try {
+      await markBestAnswer(replyId);
+      const updated = await getReplies(postId);
+      setPostReplies(prev => ({ ...prev, [postId]: updated }));
+    } catch {
+      alert('Failed to mark best answer');
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Delete this question?')) return;
+    try {
+      await deletePost(postId);
+      setCoursePosts(prev => prev.filter(p => p._id !== postId));
+      // Update count
+      setCourseQuestionCounts(prev => ({
+        ...prev,
+        [selectedCourse._id]: (prev[selectedCourse._id] || 1) - 1
+      }));
+    } catch {
+      alert('Failed to delete post');
     }
   };
 
@@ -184,32 +283,73 @@ export function TutorCourseManager() {
                   <span>⭐ {course.rating}</span>
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                  <Button variant="secondary" size="sm">
-                    <Edit2 className="h-3.5 w-3.5 mr-2" />
-                    Edit Content
-                  </Button>
+                <div className="flex items-center justify-between mt-6">
+                  {/* Left side buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/tutor/courses/${course._id}/add-lesson`)}
+                    >
+                      <Edit2 className="h-3.5 w-3.5 mr-2" />
+                      Edit Content
+                    </Button>
 
-                  {/* Assessment Button - Entry point for AssessmentService */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate(`/tutor/courses/${course._id}/assessments`)}
-                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5 mr-2" />
-                    Assessment
-                  </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/tutor/courses/${course._id}/lessons`)}
+                      className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-2" />
+                      View
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(course._id)}
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                    {/* Assessment Button - Entry point for AssessmentService */}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/tutor/courses/${course._id}/assessments`)}
+                      className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                    >
+                      <ClipboardList className="h-3.5 w-3.5 mr-2" />
+                      Assessment
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setAnnounceCourse(course);
+                        setAnnounceModal(true);
+                      }}
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                    >
+                      <Megaphone className="h-3.5 w-3.5 mr-2" />
+                      Announce
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(course._id)}
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+
+                  {/* Right side — Questions button styled like Create Course */}
+                  <button
+                    onClick={() => openDiscussion(course)}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 
+                      text-white text-sm font-semibold rounded-lg 
+                      hover:bg-indigo-700 transition-colors shadow-sm"
                   >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                    Delete
-                  </Button>
+                    <MessageCircle className="h-4 w-4" />
+                    Questions ({courseQuestionCounts[course._id] || 0})
+                  </button>
                 </div>
               </div>
             </Card>
@@ -325,6 +465,230 @@ export function TutorCourseManager() {
           </div>
         </form>
       </Modal>
+
+      {/* Discussion Modal */}
+      {discussionModal && selectedCourse && (
+        <Modal
+          isOpen={discussionModal}
+          onClose={() => {
+            setDiscussionModal(false);
+            setSelectedCourse(null);
+            setCoursePosts([]);
+            setExpandedPost(null);
+            setPostReplies({});
+          }}
+          title={`💬 Questions — ${selectedCourse.title}`}
+        >
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {loadingPosts ? (
+              <div className="text-center py-8 text-slate-500">
+                Loading questions...
+              </div>
+            ) : coursePosts.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p>No questions yet for this course</p>
+              </div>
+            ) : (
+              coursePosts.map((post) => (
+                <div key={post._id}
+                  className="border border-slate-200 rounded-xl p-4 space-y-3">
+
+                  {/* Question Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="w-9 h-9 rounded-full bg-indigo-100
+                          flex items-center justify-center text-indigo-700
+                          font-bold text-sm flex-shrink-0">
+                        {post.author_name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-slate-800">
+                            {post.author_name}
+                          </p>
+                          <span className="text-xs text-slate-400">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 capitalize">
+                          {post.author_role}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {post.is_pinned && (
+                        <span className="text-xs bg-amber-100 text-amber-700 
+                            px-2 py-1 rounded-full font-medium">
+                          📌 Pinned
+                        </span>
+                      )}
+                      {/* Delete button for tutor */}
+                      <button
+                        onClick={() => handleDeletePost(post._id)}
+                        className="text-xs text-rose-500 hover:text-rose-700 
+                          hover:bg-rose-50 px-2 py-1 rounded-lg transition"
+                        title="Delete question"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Question Content */}
+                  <p className="text-sm text-slate-700 leading-relaxed pl-12">
+                    {post.content}
+                  </p>
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 pl-12">
+                    <span className="text-xs text-slate-400">
+                      👍 {post.upvotes?.length || 0}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        if (expandedPost === post._id) {
+                          setExpandedPost(null);
+                        } else {
+                          setExpandedPost(post._id);
+                          const r = await getReplies(post._id);
+                          setPostReplies(prev => ({
+                            ...prev, [post._id]: r
+                          }));
+                        }
+                      }}
+                      className="text-xs text-indigo-600 hover:underline"
+                    >
+                      💬 {post.reply_count || 0} Replies
+                      {expandedPost === post._id ? ' ▲' : ' ▼'}
+                    </button>
+                  </div>
+
+                  {/* Replies Section */}
+                  {expandedPost === post._id && (
+                    <div className="pl-12 space-y-3 border-t border-slate-100 pt-3">
+                      {(postReplies[post._id] || []).map((reply) => (
+                        <div key={reply._id}
+                          className="flex gap-2 border-l-2 border-indigo-100 pl-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-semibold text-slate-700">
+                                {reply.author_name}
+                              </p>
+                              <span className="text-xs text-slate-400 capitalize">
+                                {reply.author_role}
+                              </span>
+                              {reply.is_best_answer && (
+                                <span className="text-xs bg-green-100
+                                    text-green-700 px-2 py-0.5 rounded-full">
+                                  ✅ Best Answer
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              {reply.content}
+                            </p>
+                            {!reply.is_best_answer && (
+                              <button
+                                onClick={() => handleMarkBest(reply._id, post._id)}
+                                className="text-xs text-green-600 hover:underline mt-1"
+                              >
+                                Mark as Best Answer
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Tutor Reply Input */}
+                      <div className="flex gap-2 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Write your answer..."
+                          value={replyContent[post._id] || ''}
+                          onChange={(e) => setReplyContent(prev => ({
+                            ...prev, [post._id]: e.target.value
+                          }))}
+                          className="flex-1 border border-slate-300 rounded-lg
+                            px-3 py-1.5 text-xs focus:outline-none
+                            focus:ring-2 focus:ring-indigo-300"
+                        />
+                        <button
+                          onClick={() => handleTutorReply(post._id)}
+                          className="px-3 py-1.5 bg-indigo-600 text-white
+                            text-xs rounded-lg hover:bg-indigo-700"
+                        >
+                          Reply
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Announcement Modal */}
+      {announceModal && announceCourse && (
+        <Modal
+          isOpen={announceModal}
+          onClose={() => {
+            if (!sendingAnnouncement) {
+              setAnnounceModal(false);
+              setAnnounceContent('');
+              setAnnounceCourse(null);
+            }
+          }}
+          title={`📢 Send Announcement — ${announceCourse.title}`}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              This announcement will be sent to all enrolled students
+              and appear pinned in the Q&A section.
+            </p>
+            <div>
+              <label className="block text-sm font-medium 
+                  text-slate-700 mb-1">
+                Announcement Message
+              </label>
+              <textarea
+                value={announceContent}
+                onChange={(e) => setAnnounceContent(e.target.value)}
+                placeholder="Type your announcement here..."
+                rows={4}
+                className="w-full border border-slate-300 rounded-lg 
+                  px-3 py-2 text-sm focus:outline-none 
+                  focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAnnounceModal(false);
+                  setAnnounceContent('');
+                }}
+                disabled={sendingAnnouncement}
+              >
+                Cancel
+              </Button>
+              <button
+                onClick={handleSendAnnouncement}
+                disabled={sendingAnnouncement || !announceContent.trim()}
+                className="flex items-center gap-2 px-4 py-2 
+                  bg-amber-500 text-white text-sm font-semibold 
+                  rounded-lg hover:bg-amber-600 transition
+                  disabled:opacity-50"
+              >
+                <Megaphone className="h-4 w-4" />
+                {sendingAnnouncement ? 'Sending...' : 'Send to All Students'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

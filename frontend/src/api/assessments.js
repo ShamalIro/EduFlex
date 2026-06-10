@@ -166,7 +166,11 @@ export const submitAssignment = async (assignmentId, payload) => {
     }
   );
 
-  return extractItem(response.data, 'submission');
+  return {
+    submission: extractItem(response.data, 'submission'),
+    notification: extractItem(response.data, 'notification'),
+    message: response?.data?.message || 'Assignment submitted successfully'
+  };
 };
 
 export const getMyAssignmentSubmission = async (assignmentId) => {

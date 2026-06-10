@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const Quiz = require('../models/Quiz');
 const AssignmentSubmission = require('../models/AssignmentSubmission');
 const QuizAttempt = require('../models/QuizAttempt');
+const { sendAssignmentSubmittedEmail } = require('../utils/emailService');
 
 const ENROLLMENT_SERVICE_URL = (process.env.ENROLLMENT_SERVICE_URL || 'http://localhost:4004').replace(/\/$/, '');
 
@@ -972,6 +973,44 @@ const submitStudentAssignment = async (req, res) => {
     submission.fileUrl = buildSubmissionFileUrl(submission._id);
     await submission.save();
 
+    let notification = {
+      channel: 'email',
+      sent: false,
+      message: 'Submission saved, but email notification was not sent.'
+    };
+
+    try {
+      console.info(
+        `[Assessment] Email notify attempt: studentId=${studentId}, assignmentId=${assignment._id}, email=${req.user?.email || 'missing'}`
+      );
+
+      const mailResult = await sendAssignmentSubmittedEmail({
+        to: req.user.email,
+        studentName: getUserName(req.user),
+        assignmentTitle: assignment.title,
+        submittedAt: submission.submittedAt
+      });
+
+      console.info(
+        `[Assessment] Email notify result: sent=${Boolean(mailResult?.sent)}, messageId=${mailResult?.messageId || 'n/a'}`
+      );
+
+      notification = {
+        channel: 'email',
+        sent: Boolean(mailResult?.sent),
+        message: mailResult?.sent
+          ? 'Submission saved and confirmation email sent.'
+          : `Submission saved, but email notification was not sent (${mailResult?.reason || 'unknown reason'}).`
+      };
+    } catch (emailError) {
+      console.error('Failed to send assignment submission email:', emailError.message);
+      notification = {
+        channel: 'email',
+        sent: false,
+        message: `Submission saved, but email notification failed (${emailError.message}).`
+      };
+    }
+
     try {
       await syncEnrollmentProgress(req, assignment.course_id, studentId);
     } catch (progressError) {
@@ -981,7 +1020,10 @@ const submitStudentAssignment = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Assignment submitted successfully',
-      data: { submission: toSubmissionResponse(submission) }
+      data: {
+        submission: toSubmissionResponse(submission),
+        notification
+      }
     });
   } catch (error) {
     return res.status(500).json({

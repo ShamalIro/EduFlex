@@ -9,17 +9,49 @@ const resolveTutorName = (user = {}) => {
   const first = user.first_name || user.firstName || '';
   const last = user.last_name || user.lastName || '';
   const full = `${first} ${last}`.trim();
+
   if (full) return full;
+
   if (user.email && typeof user.email === 'string') {
     return user.email.split('@')[0];
   }
+
   return 'Tutor';
 };
 
-// Create course (tutor only)
+const resolveStudentId = (user = {}) => {
+  const raw = user.id ?? user.user_id ?? user.sub;
+  return raw !== undefined && raw !== null ? String(raw) : null;
+};
+
+const resolveStudentName = (user = {}) => {
+  const first = user.first_name || user.firstName || '';
+  const last = user.last_name || user.lastName || '';
+  const full = `${first} ${last}`.trim();
+
+  if (full) return full;
+
+  if (user.email && typeof user.email === 'string') {
+    return user.email.split('@')[0];
+  }
+
+  return 'Student';
+};
+
+// Create course
 const createCourse = async (req, res) => {
   try {
-    const { title, description, category, level, duration, price, thumbnail } = req.body;
+    const {
+      title,
+      description,
+      thumbnail,
+      category,
+      level,
+      duration,
+      price,
+      is_free
+    } = req.body;
+
     const tutorId = resolveTutorId(req.user);
 
     if (!title || !description || !category || !level || !duration) {
@@ -36,17 +68,20 @@ const createCourse = async (req, res) => {
       });
     }
 
-    const course = await Course.create({
+    const course = new Course({
       title,
       description,
+      thumbnail,
       category,
       level,
       duration,
-      price: price || 0,
-      thumbnail: thumbnail || null,
+      price: is_free ? 0 : price,
+      is_free: is_free || false,
       tutor_id: tutorId,
       tutor_name: resolveTutorName(req.user)
     });
+
+    await course.save();
 
     res.status(201).json({
       success: true,
@@ -63,7 +98,7 @@ const createCourse = async (req, res) => {
   }
 };
 
-// Get all published courses (public)
+// Get all published courses
 const getAllCourses = async (req, res) => {
   try {
     const { category, level, search } = req.query;
@@ -89,7 +124,7 @@ const getAllCourses = async (req, res) => {
   }
 };
 
-// Get single course by ID
+// Get single course
 const getCourseById = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -115,10 +150,11 @@ const getCourseById = async (req, res) => {
   }
 };
 
-// Get tutor's own courses
+// Get tutor courses
 const getMyCourses = async (req, res) => {
   try {
     const tutorId = resolveTutorId(req.user);
+
     if (!tutorId) {
       return res.status(401).json({
         success: false,
@@ -142,7 +178,7 @@ const getMyCourses = async (req, res) => {
   }
 };
 
-// Update course (tutor only)
+// Update course
 const updateCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -184,7 +220,7 @@ const updateCourse = async (req, res) => {
   }
 };
 
-// Delete course (tutor/admin only)
+// Delete course
 const deleteCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -221,7 +257,7 @@ const deleteCourse = async (req, res) => {
   }
 };
 
-// Publish/Unpublish course
+// Publish / Unpublish course
 const togglePublish = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -251,18 +287,332 @@ const togglePublish = async (req, res) => {
   }
 };
 
-// Get admin statistics
+// Admin stats
 const getAdminStats = async (req, res) => {
   try {
     const totalCourses = await Course.countDocuments();
     const published = await Course.countDocuments({ is_published: true });
+
     const byCategory = await Course.aggregate([
-      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
+
     res.json({ totalCourses, published, byCategory });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Add lesson
+const addLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    const requesterId = resolveTutorId(req.user);
+
+    if (String(course.tutor_id) !== String(requesterId) && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to add lessons to this course'
+      });
+    }
+
+    const lessonNumber = Number(req.body.lessonNumber);
+
+    if (!lessonNumber || lessonNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid lesson number is required'
+      });
+    }
+
+    const alreadyExists = course.lessons.some(
+      (lesson) => Number(lesson.lessonNumber) === lessonNumber
+    );
+
+    if (alreadyExists) {
+      return res.status(400).json({
+        success: false,
+        message: `Lesson number ${lessonNumber} already exists for this course`
+      });
+    }
+
+    const lessonData = {
+      lessonNumber,
+      lessonTitle: req.body.lessonTitle,
+      lessonDescription: req.body.lessonDescription,
+      videoUrl: req.body.videoUrl,
+      pdfUrl: req.file ? `/uploads/${req.file.filename}` : null
+    };
+
+    course.lessons.push(lessonData);
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Lesson added successfully',
+      data: { course }
+    });
+  } catch (error) {
+    console.error('Add lesson error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add lesson',
+      error: error.message
+    });
+  }
+};
+
+// Update lesson
+const updateLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    const lesson = course.lessons.id(req.params.lessonId);
+
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lesson not found'
+      });
+    }
+
+    Object.assign(lesson, req.body);
+    await course.save();
+
+    res.json({
+      success: true,
+      message: 'Lesson updated successfully',
+      data: { course }
+    });
+  } catch (error) {
+    console.error('Update lesson error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update lesson',
+      error: error.message
+    });
+  }
+};
+
+// Delete lesson
+const deleteLesson = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    course.lessons.pull(req.params.lessonId);
+    await course.save();
+
+    res.json({
+      success: true,
+      message: 'Lesson deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete lesson error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete lesson',
+      error: error.message
+    });
+  }
+};
+
+// Get reviews
+const getReviews = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    const reviews = course.reviews || [];
+
+    res.json({
+      success: true,
+      data: {
+        reviews,
+        rating: course.rating || 0,
+        reviewCount: reviews.length
+      }
+    });
+  } catch (error) {
+    console.error('Get reviews error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: error.message
+    });
+  }
+};
+
+// Add review
+const addReview = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    const studentId = resolveStudentId(req.user);
+
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing student id'
+      });
+    }
+
+    if (req.user.role && req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only students can add reviews'
+      });
+    }
+
+    const numericRating = Number(rating);
+
+    if (!numericRating || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment is required'
+      });
+    }
+
+    const alreadyReviewed = (course.reviews || []).some(
+      (review) => String(review.student_id) === String(studentId)
+    );
+
+    if (alreadyReviewed) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this course'
+      });
+    }
+
+    course.reviews.push({
+      student_id: studentId,
+      student_name: resolveStudentName(req.user),
+      rating: numericRating,
+      comment: comment.trim()
+    });
+
+    const totalRating = course.reviews.reduce(
+      (sum, review) => sum + Number(review.rating || 0),
+      0
+    );
+
+    course.rating = Number((totalRating / course.reviews.length).toFixed(1));
+
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: {
+        reviews: course.reviews,
+        rating: course.rating,
+        reviewCount: course.reviews.length
+      }
+    });
+  } catch (error) {
+    console.error('Add review error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review',
+      error: error.message
+    });
+  }
+};
+
+// Increment students count
+const incrementStudents = async (req, res) => {
+  try {
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { students_count: 1 } },
+      { new: true }
+    );
+
+    return res.json({
+      success: true,
+      data: { course }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Set students count directly
+const setStudentsCount = async (req, res) => {
+  try {
+    const { count } = req.body;
+
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $set: { students_count: count } },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    console.log(`Set students_count=${count} for course ${req.params.id}`);
+
+    return res.json({
+      success: true,
+      data: { course }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
@@ -274,5 +624,12 @@ module.exports = {
   updateCourse,
   deleteCourse,
   togglePublish,
-  getAdminStats
+  getAdminStats,
+  addLesson,
+  updateLesson,
+  deleteLesson,
+  getReviews,
+  addReview,
+  incrementStudents,
+  setStudentsCount
 };

@@ -17,103 +17,161 @@ const normalizeCourse = (course) => ({
   rating: toSafeNumber(course?.rating, 0)
 });
 
-// Get all published courses (student browse page)
 export const getCourses = async () => {
   const response = await courseClient.get('/courses');
   const courses = response.data?.data?.courses || [];
   return courses.map(normalizeCourse);
 };
 
-const extractEnrollmentList = (responseData) => {
-  const scoped = responseData?.data?.enrollments;
-  if (Array.isArray(scoped)) return scoped;
-  if (Array.isArray(responseData?.enrollments)) return responseData.enrollments;
-  return [];
-};
-
-const enrichCourseWithEnrollment = (course, enrollment) => ({
-  ...normalizeCourse(course),
-  id: String(course?._id || course?.id || enrollment?.course_id || ''),
-  progress: Number(enrollment?.progress || 0),
-  enrolledAt: enrollment?.createdAt || enrollment?.enrolledAt || null,
-  enrollmentId: enrollment?._id || enrollment?.id || null,
-  course_id: enrollment?.course_id || course?._id || course?.id
-});
-
 export const getEnrolledCourses = async () => {
-  const enrollmentResponse = await courseClient.get('/enrollments/mine');
-  const enrollments = extractEnrollmentList(enrollmentResponse.data);
+  try {
+    const enrollRes = await courseClient.get('/grades/mine');
+    const enrollments = enrollRes.data.data.enrollments;
 
-  if (!enrollments.length) return [];
+    if (!enrollments || enrollments.length === 0) return [];
 
-  const courses = await Promise.all(
-    enrollments.map(async (enrollment) => {
+    const coursePromises = enrollments.map(async (enrollment) => {
       try {
-        const response = await courseClient.get(`/courses/${enrollment.course_id}`);
-        const course = response.data?.data?.course;
-        if (!course) return null;
-        return enrichCourseWithEnrollment(course, enrollment);
-      } catch (error) {
+        const courseRes = await courseClient.get(`/courses/${enrollment.course_id}`);
+        const course = courseRes.data.data.course;
+
+        return {
+          ...course,
+          progress: enrollment.progress || 0,
+          enrollment_id: enrollment._id
+        };
+      } catch {
         return null;
       }
-    })
-  );
+    });
 
-  return courses.filter(Boolean);
+    const courses = await Promise.all(coursePromises);
+    return courses.filter(Boolean);
+  } catch (error) {
+    console.error('getEnrolledCourses error:', error);
+    return [];
+  }
 };
 
-export const enrollInCourse = async (courseId) => {
-  const response = await courseClient.post('/enrollments', { courseId });
-  return response.data?.data?.enrollment || null;
+export const enrollFreeCourse = async (courseId) => {
+  try {
+    const res = await courseClient.post('/grades', {
+      courseId: courseId
+    });
+    return res.data;
+  } catch (error) {
+    console.error('Enroll error:', error);
+    throw error;
+  }
 };
 
 export const getEnrollmentStatus = async (courseId) => {
-  const response = await courseClient.get(`/enrollments/course/${courseId}/status`);
-  return response.data?.data || { isEnrolled: false, enrollment: null };
+  try {
+    const cleanId = String(courseId).trim();
+    const res = await courseClient.get(`/grades/course/${cleanId}/status`);
+    return res.data.data;
+  } catch (error) {
+    return { isEnrolled: false };
+  }
 };
 
-// Get single course by ID
 export const getCourseById = async (id) => {
   const response = await courseClient.get(`/courses/${id}`);
   const course = response.data?.data?.course;
   return course ? normalizeCourse(course) : null;
 };
-// Get lessons for a course - will connect to CourseService later  
+
 export const getCourseLessons = async (courseId) => {
-  return [];
+  const response = await courseClient.get(`/courses/${courseId}`);
+  const course = response.data?.data?.course;
+
+  const lessons = course?.lessons || [];
+
+  return lessons.map((lesson) => ({
+    ...lesson,
+    id: String(lesson._id || lesson.id || ''),
+    title: lesson.lessonTitle || lesson.title || 'Untitled Lesson',
+    duration: lesson.duration || 'Lesson content',
+  }));
 };
-// Get tutor's own courses
+
 export const getMyCourses = async () => {
   const response = await courseClient.get('/courses/tutor/my-courses');
   return response.data.data.courses;
 };
 
-// Create a new course (tutor)
 export const createCourse = async (courseData) => {
   const response = await courseClient.post('/courses', courseData);
   return response.data.data.course;
 };
 
-// Update a course (tutor)
 export const updateCourse = async (id, courseData) => {
   const response = await courseClient.put(`/courses/${id}`, courseData);
   return response.data.data.course;
 };
 
-// Delete a course (tutor)
 export const deleteCourse = async (id) => {
   const response = await courseClient.delete(`/courses/${id}`);
   return response.data;
 };
 
-// Publish / Unpublish a course (tutor)
 export const togglePublishCourse = async (id) => {
   const response = await courseClient.patch(`/courses/${id}/publish`);
   return response.data.data.course;
 };
 
-// Get admin course statistics
+export const addLesson = (courseId, formData) =>
+  courseClient.post(`/courses/${courseId}/lessons`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+export const updateLesson = async (courseId, lessonId, data) => {
+  const response = await courseClient.put(`/courses/${courseId}/lessons/${lessonId}`, data);
+  return response.data;
+};
+
+export const deleteLesson = async (courseId, lessonId) => {
+  const response = await courseClient.delete(`/courses/${courseId}/lessons/${lessonId}`);
+  return response.data;
+};
+
 export const getAdminCourseStats = async () => {
   const res = await courseClient.get('/courses/admin/stats');
   return res.data;
+};
+
+export const getAIRecommendations = async (enrolledCourses, learningGoal = '') => {
+  try {
+    const res = await courseClient.post('/grades/recommendations', {
+      enrolledCourses,
+      learningGoal
+    });
+    return res.data.data.recommendations || [];
+  } catch (error) {
+    console.error('Recommendations error:', error);
+    return [];
+  }
+};
+
+export const getCourseReviews = async (courseId) => {
+  const response = await courseClient.get(`/courses/${courseId}/reviews`);
+  return response.data.data;
+};
+
+export const addCourseReview = async (courseId, reviewData) => {
+  const response = await courseClient.post(`/courses/${courseId}/reviews`, reviewData);
+  return response.data.data;
+};
+
+// Get students enrolled in a tutor's course
+export const getCourseStudents = async (courseId) => {
+  try {
+    const res = await courseClient.get(
+      `/grades/course/${courseId}/students/details`
+    );
+    return res.data.data.enrollments || [];
+  } catch (error) {
+    console.error('getCourseStudents error:', error);
+    return [];
+  }
 };

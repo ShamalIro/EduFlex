@@ -5,7 +5,8 @@ const {
   verifyPassword,
   findByEmailWithPassword,
   updateUser,
-  getAllUsers: getAllUsersFromDB
+  getAllUsers: getAllUsersFromDB,
+  findByIds
 } = require('../models/userModel');
 const { generateToken } = require('../utils/jwtHelper');
 
@@ -77,7 +78,8 @@ const register = async (req, res) => {
           last_name: newUser.last_name,
           email: newUser.email,
           role: newUser.role,
-          is_active: newUser.is_active
+          is_active: newUser.is_active,
+          is_verified: newUser.is_verified || 0
         },
         token
       }
@@ -126,6 +128,14 @@ const login = async (req, res) => {
       });
     }
 
+    // Check if tutor is verified by admin
+    if (user.role === 'tutor' && !user.is_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your tutor account is pending admin approval'
+      });
+    }
+
     // Verify password
     const isPasswordValid = await verifyPassword(password, user.password);
 
@@ -153,7 +163,8 @@ const login = async (req, res) => {
           last_name: user.last_name,
           email: user.email,
           role: user.role,
-          is_active: user.is_active
+          is_active: user.is_active,
+          is_verified: user.is_verified
         },
         token
       }
@@ -291,10 +302,36 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+/**
+ * Get multiple users by IDs (internal)
+ */
+const getUsersByIds = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ids array is required'
+      });
+    }
+    const users = await findByIds(ids);
+    return res.json({
+      success: true,
+      data: { users }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
-  getAllUsers
+  getAllUsers,
+  getUsersByIds
 };

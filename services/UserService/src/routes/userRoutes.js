@@ -146,6 +146,81 @@ router.put('/:id/role', authMiddleware, isAdmin, async (req, res) => {
 });
 
 /**
+ * Pending Tutors Management Routes (admin only)
+ */
+
+// Get all pending tutors (admin only)
+// GET /api/users/pending-tutors
+// Header: Authorization: Bearer <token>
+router.get('/pending-tutors', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { getAllPendingTutors } = require('../models/userModel');
+    const tutors = await getAllPendingTutors();
+    res.json({
+      success: true,
+      data: { tutors }
+    });
+  } catch (error) {
+    console.error('Get pending tutors error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch pending tutors',
+      error: error.message
+    });
+  }
+});
+
+// Approve tutor (admin only)
+// PUT /api/users/:id/approve
+// Header: Authorization: Bearer <token>
+router.put('/:id/approve', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { updateUser } = require('../models/userModel');
+    const userId = req.params.id;
+    
+    const updatedUser = await updateUser(userId, { is_verified: 1 });
+
+    res.json({
+      success: true,
+      message: 'Tutor approved successfully',
+      data: { user: updatedUser }
+    });
+  } catch (error) {
+    console.error('Approve tutor error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve tutor',
+      error: error.message
+    });
+  }
+});
+
+// Reject tutor (admin only)
+// PUT /api/users/:id/reject
+// Header: Authorization: Bearer <token>
+router.put('/:id/reject', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { updateUser } = require('../models/userModel');
+    const userId = req.params.id;
+    
+    const updatedUser = await updateUser(userId, { is_active: 0 });
+
+    res.json({
+      success: true,
+      message: 'Tutor rejected successfully',
+      data: { user: updatedUser }
+    });
+  } catch (error) {
+    console.error('Reject tutor error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reject tutor',
+      error: error.message
+    });
+  }
+});
+
+/**
  * Health check route
  */
 router.get('/health', (req, res) => {
@@ -153,6 +228,30 @@ router.get('/health', (req, res) => {
     status: 'OK',
     message: 'User Service routes working'
   });
+});
+
+// Get user by ID (internal use - for tutor to see student info)
+router.get('/find/:id', authMiddleware, async (req, res) => {
+  try {
+    const { findById } = require('../models/userModel');
+    const user = await findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    return res.json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 });
 
 module.exports = router;

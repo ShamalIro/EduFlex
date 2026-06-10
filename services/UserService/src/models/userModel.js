@@ -30,7 +30,7 @@ const findById = async (userId) => {
   try {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
-      'SELECT id, first_name, last_name, email, role, is_active, created_at FROM users WHERE id = ?',
+      'SELECT id, first_name, last_name, email, role, is_active, is_verified, created_at FROM users WHERE id = ?',
       [userId]
     );
     connection.release();
@@ -55,8 +55,8 @@ const createUser = async (userData) => {
 
     const connection = await pool.getConnection();
     const query = `
-INSERT INTO users (first_name, last_name, email, password, role, is_active, created_at)
-VALUES (?, ?, ?, ?, ?, 1, NOW())
+INSERT INTO users (first_name, last_name, email, password, role, is_active, is_verified, created_at)
+VALUES (?, ?, ?, ?, ?, 1, 0, NOW())
     `;
     const [result] = await connection.query(query, [
 first_name, last_name, email, hashedPassword, role
@@ -97,7 +97,7 @@ const findByEmailWithPassword = async (email) => {
   try {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
-      'SELECT id, first_name, last_name, email, password, role, is_active FROM users WHERE email = ?',
+      'SELECT id, first_name, last_name, email, password, role, is_active, is_verified FROM users WHERE email = ?',
       [email]
     );
     connection.release();
@@ -119,7 +119,7 @@ const updateUser = async (userId, updateData) => {
     const connection = await pool.getConnection();
 
     // Build dynamic update query
-    const allowedFields = ['first_name', 'last_name', 'bio', 'role', 'is_active'];
+    const allowedFields = ['first_name', 'last_name', 'bio', 'role', 'is_active', 'is_verified'];
     const updates = [];
     const values = [];
 
@@ -187,7 +187,7 @@ const getAllUsers = async (options = {}) => {
 
     // Get users
     const [rows] = await connection.query(
-      `SELECT id, first_name, last_name, email, role, is_active, created_at FROM users 
+      `SELECT id, first_name, last_name, email, role, is_active, is_verified, created_at FROM users 
        ${whereClause} 
        ORDER BY created_at DESC 
        LIMIT ? OFFSET ?`,
@@ -203,6 +203,28 @@ const getAllUsers = async (options = {}) => {
     };
   } catch (error) {
     console.error('Database error in getAllUsers:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Get all pending tutors (not yet verified)
+ * @returns {Promise<array>} List of pending tutor users
+ */
+const getAllPendingTutors = async () => {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query(
+      `SELECT id, first_name, last_name, email, role, 
+       is_active, is_verified, created_at 
+       FROM users 
+       WHERE role = 'tutor' AND is_verified = 0 AND is_active = 1
+       ORDER BY created_at DESC`
+    );
+    connection.release();
+    return rows;
+  } catch (error) {
+    console.error('Database error in getAllPendingTutors:', error.message);
     throw error;
   }
 };
@@ -233,5 +255,6 @@ module.exports = {
   findByEmailWithPassword,
   updateUser,
   getAllUsers,
+  getAllPendingTutors,
   deleteUser
 };

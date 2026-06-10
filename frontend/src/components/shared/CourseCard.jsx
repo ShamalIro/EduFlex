@@ -28,6 +28,15 @@ export function CourseCard({
             {course.category}
           </Badge>
         </div>
+
+        {/* FREE Badge */}
+        {course.is_free && (
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-emerald-500 text-white border-none shadow-md">
+              FREE
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="p-5 flex-1 flex flex-col">
@@ -47,6 +56,17 @@ export function CourseCard({
 
         <p className="text-sm text-slate-500 mb-4">by {course.tutor_name}</p>
 
+        {/* Price section */}
+        <div className="mt-2 mb-4">
+          {course.is_free ? (
+            <span className="text-green-600 font-bold text-lg">Free</span>
+          ) : (
+            <span className="text-slate-900 font-bold text-lg">
+              ${course.price || '0.00'}
+            </span>
+          )}
+        </div>
+
         <div className="mt-auto space-y-4">
           {!isEnrolled ?
           <>
@@ -54,17 +74,32 @@ export function CourseCard({
                 <Users className="h-4 w-4 mr-1.5" />
                 {(course.students_count || 0).toLocaleString()} students
               </div>
-              <Button onClick={onEnroll} className="w-full">
-                Enroll Now
-              </Button>
+              <button
+                onClick={onEnroll}
+                className={`w-full py-2 rounded-lg font-semibold text-white transition
+                  ${course.is_free
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+              >
+                {course.is_free ? 'Enroll Free' : 'Enroll Now'}
+              </button>
             </> :
 
           <>
               <ProgressBar value={progress} size="sm" showLabel />
-              <Button onClick={onContinue} variant="primary" className="w-full">
-                <PlayCircle className="h-4 w-4 mr-2" />
-                Continue Learning
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={onContinue} variant="primary" className="w-full">
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Continue Learning
+                </Button>
+                <button
+                  disabled
+                  className="w-full py-2 rounded-lg font-semibold text-white bg-green-500 cursor-not-allowed opacity-80"
+                >
+                  ✅ Enrolled
+                </button>
+              </div>
             </>
           }
         </div>

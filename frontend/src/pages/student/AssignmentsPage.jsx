@@ -16,6 +16,7 @@ export function AssignmentsPage() {
   const [submitFile, setSubmitFile] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const location = useLocation();
 
@@ -49,6 +50,7 @@ export function AssignmentsPage() {
     setSubmitFile(null);
     setSubmissionText(assignment?.mySubmission?.submissionText || '');
     setSubmitError('');
+    setSubmitSuccess('');
     setIsSubmitOpen(true);
   };
 
@@ -72,10 +74,12 @@ export function AssignmentsPage() {
     try {
       setIsSubmitting(true);
       setSubmitError('');
-      const submission = await submitAssignment(selectedAssignment._id || selectedAssignment.id, {
+      const result = await submitAssignment(selectedAssignment._id || selectedAssignment.id, {
         file: submitFile,
         submissionText
       });
+
+      const submission = result?.submission;
 
       setAssignments((prev) =>
         prev.map((assignment) => {
@@ -88,6 +92,11 @@ export function AssignmentsPage() {
             mySubmission: submission
           };
         })
+      );
+
+      setSubmitSuccess(
+        result?.notification?.message ||
+          'Assignment submitted successfully. A confirmation email will be sent if your account email is available.'
       );
 
       closeSubmitModal();
@@ -133,6 +142,12 @@ export function AssignmentsPage() {
           Assignments from your enrolled courses
         </p>
       </div>
+
+      {submitSuccess ? (
+        <Card className="p-4 border border-emerald-200 bg-emerald-50">
+          <p className="text-sm text-emerald-800">{submitSuccess}</p>
+        </Card>
+      ) : null}
 
       {assignments.length === 0 ? (
         <Card className="p-10 text-center">
