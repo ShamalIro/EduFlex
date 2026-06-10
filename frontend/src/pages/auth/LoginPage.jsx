@@ -61,9 +61,6 @@ export function LoginPage() {
             </p>
           </div>
         </div>
-        <div className="relative z-10 text-sm text-indigo-200">
-          © 2024 EduFlex LMS. All rights reserved.
-        </div>
       </div>
 
       {/* Right Side - Form */}

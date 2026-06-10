@@ -31,6 +31,8 @@ export function AuthProvider({ children }) {
     const response = await apiLogin(email, password);
     setToken(response.token);
     setUser(response.user);
+    localStorage.setItem('eduflex_token', response.token);
+    localStorage.setItem('eduflex_user', JSON.stringify(response.user));
     return response;
   };
 
@@ -45,6 +47,8 @@ export function AuthProvider({ children }) {
     const response = await apiRegister(firstName, lastName, email, password, role);
     setToken(response.token);
     setUser(response.user);
+    localStorage.setItem('eduflex_token', response.token);
+    localStorage.setItem('eduflex_user', JSON.stringify(response.user));
   };
 
   const logout = () => {

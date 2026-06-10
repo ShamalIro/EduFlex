@@ -28,58 +28,48 @@ export function StudentDashboard() {
     fetchData();
   }, []);
 
+  // Fix name display
+  const firstName = user?.first_name || user?.name?.split(' ')[0] || 'Student';
+
   const stats = [
     {
       label: 'Enrolled Courses',
       value: courses.length,
       icon: BookOpen,
-      change: '+2',
+      change: 'My courses',
       trend: 'up'
     },
     {
       label: 'Completed Lessons',
-      value: 12,
+      value: 'Coming Soon',
       icon: CheckCircle,
-      change: '+5',
+      change: 'AssessmentService pending',
       trend: 'up'
     },
     {
       label: 'Average Score',
-      value: '85%',
+      value: 'Coming Soon',
       icon: Award,
-      change: '+2%',
+      change: 'AssessmentService pending',
       trend: 'up'
     },
     {
       label: 'Hours Learned',
-      value: 24,
+      value: 'Coming Soon',
       icon: Clock,
-      change: '1.5h',
+      change: 'AssessmentService pending',
       trend: 'up'
     }
   ];
 
   const container = {
-    hidden: {
-      opacity: 0
-    },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
   const item = {
-    hidden: {
-      opacity: 0,
-      y: 20
-    },
-    show: {
-      opacity: 1,
-      y: 0
-    }
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
   };
 
   return (
@@ -93,10 +83,10 @@ export function StudentDashboard() {
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Welcome back, {user?.name?.split(' ')[0]}! 👋
+            Welcome back, {firstName}! 👋
           </h1>
           <p className="text-slate-500 mt-1">
-            You've made great progress this week. Keep it up!
+            Ready to continue learning today?
           </p>
         </div>
         <Button onClick={() => navigate('/student/courses')}>
@@ -132,11 +122,21 @@ export function StudentDashboard() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-64 bg-slate-100 rounded-lg animate-pulse"
-              />
+              <div key={i} className="h-64 bg-slate-100 rounded-lg animate-pulse" />
             ))}
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
+            <BookOpen className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-700 mb-2">
+              No enrolled courses yet
+            </h3>
+            <p className="text-slate-500 mb-6">
+              Browse our course catalog and enroll to start learning
+            </p>
+            <Button onClick={() => navigate('/student/courses')}>
+              Browse Courses
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -158,51 +158,35 @@ export function StudentDashboard() {
         variants={item}
         className="grid grid-cols-1 lg:grid-cols-3 gap-8"
       >
+        {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">
             Recent Activity
           </h3>
-          <div className="space-y-6">
-            {[1, 2, 3].map((_, idx) => (
-              <div key={idx} className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                  <CheckCircle className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">
-                    Completed lesson "React Hooks In-Depth"
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Introduction to React • 2 hours ago
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <CheckCircle className="h-10 w-10 text-slate-300 mb-3" />
+            <p className="text-slate-500 text-sm">
+              No recent activity yet.
+            </p>
+            <p className="text-slate-400 text-xs mt-1">
+              Start a course to track your progress
+            </p>
           </div>
         </div>
 
+        {/* Upcoming Quizzes */}
         <div className="bg-white rounded-lg border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">
             Upcoming Quizzes
           </h3>
-          <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-amber-50 border border-amber-100">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
-                  Due Tomorrow
-                </span>
-                <Clock className="h-4 w-4 text-amber-500" />
-              </div>
-              <h4 className="font-medium text-slate-900">
-                React Fundamentals Quiz
-              </h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Introduction to React
-              </p>
-              <Button size="sm" variant="secondary" className="w-full mt-3">
-                Start Quiz
-              </Button>
-            </div>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Award className="h-10 w-10 text-slate-300 mb-3" />
+            <p className="text-slate-500 text-sm">
+              No quizzes scheduled
+            </p>
+            <p className="text-slate-400 text-xs mt-1">
+              Coming soon with AssessmentService
+            </p>
           </div>
         </div>
       </motion.div>

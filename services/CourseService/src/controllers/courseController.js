@@ -1,14 +1,38 @@
 const Course = require('../models/courseModel');
 
+const resolveTutorId = (user = {}) => {
+  const raw = user.id ?? user.user_id ?? user.sub;
+  return raw !== undefined && raw !== null ? String(raw) : null;
+};
+
+const resolveTutorName = (user = {}) => {
+  const first = user.first_name || user.firstName || '';
+  const last = user.last_name || user.lastName || '';
+  const full = `${first} ${last}`.trim();
+  if (full) return full;
+  if (user.email && typeof user.email === 'string') {
+    return user.email.split('@')[0];
+  }
+  return 'Tutor';
+};
+
 // Create course (tutor only)
 const createCourse = async (req, res) => {
   try {
     const { title, description, category, level, duration, price, thumbnail } = req.body;
+    const tutorId = resolveTutorId(req.user);
 
     if (!title || !description || !category || !level || !duration) {
       return res.status(400).json({
         success: false,
         message: 'title, description, category, level and duration are required'
+      });
+    }
+
+    if (!tutorId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing tutor id'
       });
     }
 
@@ -20,8 +44,8 @@ const createCourse = async (req, res) => {
       duration,
       price: price || 0,
       thumbnail: thumbnail || null,
-      tutor_id: req.user.id,
-      tutor_name: req.user.first_name || 'Tutor'
+      tutor_id: tutorId,
+      tutor_name: resolveTutorName(req.user)
     });
 
     res.status(201).json({
@@ -94,7 +118,15 @@ const getCourseById = async (req, res) => {
 // Get tutor's own courses
 const getMyCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ tutor_id: req.user.id }).sort({ createdAt: -1 });
+    const tutorId = resolveTutorId(req.user);
+    if (!tutorId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload: missing tutor id'
+      });
+    }
+
+    const courses = await Course.find({ tutor_id: tutorId }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -122,7 +154,9 @@ const updateCourse = async (req, res) => {
       });
     }
 
-    if (course.tutor_id !== req.user.id && req.user.role !== 'admin') {
+    const requesterId = resolveTutorId(req.user);
+
+    if (String(course.tutor_id) !== String(requesterId) && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this course'
@@ -162,7 +196,9 @@ const deleteCourse = async (req, res) => {
       });
     }
 
-    if (course.tutor_id !== req.user.id && req.user.role !== 'admin') {
+    const requesterId = resolveTutorId(req.user);
+
+    if (String(course.tutor_id) !== String(requesterId) && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this course'
@@ -215,6 +251,21 @@ const togglePublish = async (req, res) => {
   }
 };
 
+// Get admin statistics
+const getAdminStats = async (req, res) => {
+  try {
+    const totalCourses = await Course.countDocuments();
+    const published = await Course.countDocuments({ is_published: true });
+    const byCategory = await Course.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    res.json({ totalCourses, published, byCategory });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createCourse,
   getAllCourses,
@@ -222,5 +273,6 @@ module.exports = {
   getMyCourses,
   updateCourse,
   deleteCourse,
-  togglePublish
+  togglePublish,
+  getAdminStats
 };
